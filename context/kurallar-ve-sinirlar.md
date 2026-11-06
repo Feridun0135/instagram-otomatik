@@ -16,9 +16,9 @@ Bu dosya projede her zaman dikkate alınması gereken kalıcı kuralları, sın�
 
 ## Hukuki, güvenlik ve gizlilik sınırları
 
-<!-- Kişisel veriler, lisanslar, sözleşmeler veya güvenlik gereklilikleri. -->
+- GitHub deposu herkese açıktır; API anahtarları ve token'lar yalnızca `.env` dosyasında ve GitHub gizli ayarlarında (Secrets) tutulur, depoya eklenmez.
 
 ## Kullanıcı onayı gerektiren işlemler
 
-<!-- Yayımlama, silme, ödeme, dışarıya mesaj gönderme gibi onay gerektiren işlemler. -->
+- Günlük içerik paylaşımı tamamen otomatiktir; her paylaşım için ayrıca kullanıcı onayı beklenmez.
 

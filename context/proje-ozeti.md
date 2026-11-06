@@ -19,9 +19,9 @@ Hesabı düzenli içerikle büyütüp markalarla iş birliği yapılabilecek bir
 - Her gün 1 videolu içerik üretimi ve paylaşımı.
 - İçerik dili Türkçedir.
 - İçerik konuları:
-  - Günlük teknoloji bilgileri
-  - Ürün tanıtımları
+  - Yeni çıkan / duyurulan teknoloji ürünlerinin analizi (teknoloji haber sitelerinden)
   - Telefon veya bilgisayar kullanımını kolaylaştıran ipuçları
+  - Günlük teknoloji bilgileri
 
 ## Kapsam dışında kalanlar
 
@@ -29,14 +29,15 @@ Hesabı düzenli içerikle büyütüp markalarla iş birliği yapılabilecek bir
 
 ## Mevcut durum
 
-Proje başlangıç aşamasında. Çalışma talimatları ve bağlam yapısı hazırlandı; video üretim kodunun ilk sürümü yazıldı (içerik metni, seslendirme, stok görüntü, video); Instagram'a paylaşım kodu ve günlük GitHub otomasyonu yazıldı; otomasyon henüz GitHub'a yüklenmedi. Yayınlanmış içerik yok. Instagram hesabı (@feriduntalak) açıldı ve profesyonel hesaba çevrildi; Meta uygulaması ("Günlük makaralar") üzerinden Instagram API bağlantısı kuruldu ve doğrulandı. Teknoloji kararları için `kararlar.md` dosyasına bak.
+Sistem çalışır durumda (2026-11-06): GitHub Actions her gün videoyu üretip GitHub Pages'e koyuyor ve resmî Instagram API'si ile @feriduntalak hesabında Reels olarak paylaşıyor. İlk otomatik paylaşım 2026-11-06'da yapıldı. Instagram bağlantısı Meta uygulaması "Günlük makaralar" üzerinden kuruldu. Teknoloji ve içerik kararları için `kararlar.md` dosyasına bak.
 
 ## Önemli konumlar
 
 - `calistir.py`: Günün videosunu üreten ana giriş dosyası.
 - `paylas.py`: Videoyu resmî Instagram API'si ile Reels olarak paylaşır.
-- `github-otomasyonu/gunluk-reels.yml`: Günlük GitHub Actions otomasyonu (GitHub'da `.github/workflows/` altına konur).
-- `uretici/`: İçerik, seslendirme, görsel ve video modülleri.
+- `.github/workflows/gunluk-reels.yml`: Günlük GitHub Actions otomasyonu (çalışma saatleri burada).
+- `uretici/`: İçerik (`icerik.py`), haber toplama (`haberler.py`), seslendirme, görsel ve video modülleri.
 - `KURULUM.md`: Kurulum ve çalıştırma adımları.
 - `cikti/`: Üretilen videolar (GitHub'a yüklenmez).
 - `veri/gecmis.json`: Daha önce işlenen konular (tekrarı önlemek için).
+- GitHub deposu: https://github.com/Feridun0135/instagram-otomatik (herkese açık; çalışmalar Actions sekmesinde).

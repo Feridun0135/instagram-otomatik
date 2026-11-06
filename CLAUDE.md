@@ -71,8 +71,9 @@ Bu dosya projenin ana ve kalıcı çalışma talimatlarını içerir. Claude Cod
 
 ## Projeye özel kalıcı talimatlar
 
-- Bu proje, bir Instagram hesabı için her gün otomatik içerik üretip paylaşacak bir sistemdir. Ayrıntılı kapsam, hedefler ve kurallar için `context/README.md` haritasını izle; bu bilgileri buraya kopyalama.
-- İçerik konuları: günlük teknoloji bilgileri, ürün tanıtımları ve telefon veya bilgisayar kullanımını kolaylaştıran ipuçları. Bu çerçevenin dışına çıkan içerik türlerini önermeden önce kullanıcıya sor.
-- Paylaşım düzeni günde 1 videolu içeriktir. Sistem tasarımı, içerik planları ve üretim akışı bu düzene göre kurulur.
-- Instagram'da paylaşım yapma, hesap adına takip, yorum veya mesaj gönderme ve hesap ayarlarını değiştirme için onay sınırları henüz belirlenmedi. Kullanıcı bu sınırları belirleyip `context/kurallar-ve-sinirlar.md` dosyasına işlenene kadar bu işlemleri açık onay olmadan yapma.
-- Teknoloji, araç ve çalıştırma, test veya denetim komutları henüz belirlenmedi. Bunlar kararlaştırılıp `context/kararlar.md` dosyasına işlenmeden komut veya araç varsayma.
+- Bu proje, @feriduntalak Instagram hesabı için her gün otomatik videolu içerik üretip paylaşan bir sistemdir. Ayrıntılı kapsam, hedefler, kararlar ve kurallar için `context/README.md` haritasını izle; bu bilgileri buraya kopyalama.
+- İçerik türleri: yeni çıkan teknoloji ürünlerinin analizi, telefon/bilgisayar ipuçları ve teknoloji bilgileri. Bu çerçevenin dışına çıkan içerik türlerini önermeden önce kullanıcıya sor.
+- Sistem günde 1 videoyu kullanıcı onayı beklemeden otomatik paylaşır (GitHub Actions). Buna karşın çalışma oturumlarında hesaba elle paylaşım yapma, `paylas.py`'yi video adresiyle çalıştırma, hesap adına takip, yorum veya mesaj gönderme ve hesap ayarlarını değiştirme işlemlerini açık onay olmadan yapma.
+- Doğrulanmış komutlar (proje kökünden): `python calistir.py --deneme` (anahtarsız örnek video), `python calistir.py` (günün videosu), `python paylas.py --kontrol` (yalnızca Instagram bağlantı kontrolü, paylaşım yapmaz).
+- GitHub deposu herkese açıktır. Anahtar ve token'lar yalnızca `.env` dosyasında ve GitHub gizli ayarlarında (Secrets) tutulur; bunları ve kullanıcının ses örneğini depoya ekleme.
+- Kod veya otomasyon değişiklikleri GitHub'a gönderilmeden (push) günlük çalışmaya yansımaz. Hatalı bir çalışmayı yeniden denemek için "Re-run" değil "Run workflow" kullanılmalıdır; "Re-run" çalışmanın eski otomasyon dosyasını kullanır.
