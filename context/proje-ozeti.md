@@ -29,7 +29,7 @@ Hesabı düzenli içerikle büyütüp markalarla iş birliği yapılabilecek bir
 
 ## Mevcut durum
 
-Proje başlangıç aşamasında. Çalışma talimatları ve bağlam yapısı hazırlandı; video üretim kodunun ilk sürümü yazıldı (içerik metni, seslendirme, stok görüntü, video); Instagram'a paylaşım ve günlük zamanlama henüz eklenmedi. Yayınlanmış içerik yok. Instagram hesabı (@feriduntalak) açıldı ve profesyonel hesaba çevrildi; Meta uygulaması ("Günlük makaralar") üzerinden Instagram API bağlantısı kuruldu ve doğrulandı. Teknoloji kararları için `kararlar.md` dosyasına bak.
+Proje başlangıç aşamasında. Çalışma talimatları ve bağlam yapısı hazırlandı; video üretim kodunun ilk sürümü yazıldı (içerik metni, seslendirme, stok görüntü, video); Instagram'a paylaşım kodu ve günlük GitHub otomasyonu yazıldı; otomasyon henüz GitHub'a yüklenmedi. Yayınlanmış içerik yok. Instagram hesabı (@feriduntalak) açıldı ve profesyonel hesaba çevrildi; Meta uygulaması ("Günlük makaralar") üzerinden Instagram API bağlantısı kuruldu ve doğrulandı. Teknoloji kararları için `kararlar.md` dosyasına bak.
 
 ## Önemli konumlar
 

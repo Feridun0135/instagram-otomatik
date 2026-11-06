@@ -2,8 +2,13 @@
 name: Günlük Reels
 
 on:
+  # Saatler UTC'dir; Türkiye saati = UTC + 3. GitHub zamanlanmış çalışmaları birkaç dakika geciktirebilir.
+  # Gün gün saatler, 9,6 milyon gönderilik Buffer analizindeki en yüksek etkileşim saatlerine göre seçildi.
   schedule:
-    - cron: "41 16 * * *"   # UTC 16:41 = Türkiye saatiyle 19:41 (GitHub birkaç dakika gecikebilir)
+    - cron: "47 15 * * 1,2"    # Pazartesi, Salı      18:47 (TR)
+    - cron: "47 8 * * 3"       # Çarşamba             11:47 (TR)
+    - cron: "47 5 * * 4"       # Perşembe             08:47 (TR)
+    - cron: "47 17 * * 5,6,0"  # Cuma, Cumartesi, Pazar 20:47 (TR)
   workflow_dispatch:         # Actions sekmesinden elle de çalıştırılabilir
 
 permissions:
@@ -64,6 +69,7 @@ jobs:
       - name: Instagram'a paylaş
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
         run: python paylas.py --video-url "${{ steps.yayin.outputs.page_url }}${VIDEO_AD}" --aciklama "${KLASOR}aciklama.txt"
 
       - name: Konu geçmişini kaydet
