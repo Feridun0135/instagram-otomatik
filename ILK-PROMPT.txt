@@ -1,0 +1,19 @@
+Bu projeyi inceleyerek ana proje talimatlarını yapılandırmanı istiyorum.
+
+Önce proje kökündeki CLAUDE.md, AGENTS.md ve context/README.md dosyalarını oku.
+Ardından context/README.md dosyasının yönlendirdiği gerekli bağlam dosyalarını incele.
+
+Şu kurallara uy:
+
+1. CLAUDE.md içindeki evrensel kuralları ve mevcut bölüm sırasını koru.
+2. Yalnızca “Projeye özel kalıcı talimatlar” bölümünü bu projeye göre yapılandır.
+3. AGENTS.md dosyasını değiştirme; bu dosya Codex uyumluluk katmanıdır.
+4. Beceri dosyalarını değiştirme.
+5. Ayrıntılı proje bağlamını CLAUDE.md içine kopyalama; gerektiğinde context/README.md üzerinden yönlendir.
+6. Yalnızca dosyalardan doğrulayabildiğin bilgileri yaz.
+7. Bilmediğin hedefleri, kuralları, komutları veya yetki sınırlarını tahmin etme.
+8. Dosyalardan öğrenemediğin fakat kalıcı talimatlar için gerekli olan bilgileri bana kısa sorular hâlinde sor.
+9. Yalnızca her görevde geçerli olması gereken kısa ve kalıcı talimatları ekle.
+10. Çalıştırma, denetleme veya test komutlarını proje dosyalarından doğrulamadan yazma.
+
+Önce eksik kritik bilgileri sor. Cevapları aldıktan sonra yalnızca CLAUDE.md dosyasının projeye özel bölümünü güncelle ve yaptığın değişiklikleri kısaca açıkla.

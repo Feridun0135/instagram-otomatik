@@ -1,0 +1,6 @@
+.env
+cikti/
+__pycache__/
+*.pyc
+# Ses örneği herkese açık depoya yüklenmez (sesin kopyalanmasını önlemek için).
+ses_ornegi/

@@ -1,0 +1,83 @@
+# Her gün videoyu üretir, GitHub Pages ile herkese açık adrese koyar ve Instagram'a paylaşır.
+name: Günlük Reels
+
+on:
+  schedule:
+    - cron: "41 16 * * *"   # UTC 16:41 = Türkiye saatiyle 19:41 (GitHub birkaç dakika gecikebilir)
+  workflow_dispatch:         # Actions sekmesinden elle de çalıştırılabilir
+
+permissions:
+  contents: write   # konu geçmişini depoya kaydetmek için
+  pages: write
+  id-token: write
+
+concurrency:
+  group: gunluk-reels
+  cancel-in-progress: false
+
+jobs:
+  uret-ve-paylas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.yayin.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: FFmpeg ve yazı tipi kur
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Paketleri kur
+        run: pip install -r requirements.txt
+
+      - name: Videoyu üret
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        run: python calistir.py
+
+      - name: Yayın klasörünü hazırla
+        run: |
+          KLASOR=$(ls -d cikti/*/ | sort | tail -n 1)
+          AD="video-$(date -u +%Y%m%d-%H%M%S).mp4"
+          mkdir -p yayin
+          cp "${KLASOR}video.mp4" "yayin/$AD"
+          echo "KLASOR=$KLASOR" >> "$GITHUB_ENV"
+          echo "VIDEO_AD=$AD" >> "$GITHUB_ENV"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: yayin
+
+      - id: yayin
+        uses: actions/deploy-pages@v4
+
+      - name: Instagram'a paylaş
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        run: python paylas.py --video-url "${{ steps.yayin.outputs.page_url }}${VIDEO_AD}" --aciklama "${KLASOR}aciklama.txt"
+
+      - name: Konu geçmişini kaydet
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add veri/gecmis.json
+          git commit -m "Konu geçmişi: $(date -u +%Y-%m-%d)" || echo "Değişiklik yok"
+          git push
+
+      - name: Videoyu indirilebilir sakla (7 gün)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: cikti/
+          retention-days: 7
