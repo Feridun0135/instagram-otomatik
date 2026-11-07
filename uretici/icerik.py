@@ -118,8 +118,12 @@ Haberler:
 Daha önce işlenen konular (TEKRARLAMA):
 {eskiler}
 
-Analiz şunları içersin: ürün ne, öne çıkan 2-3 özelliği, bir artısı ve bir eksisi ya da dikkat edilecek nokta,
-kimler için mantıklı olduğu.
+Analiz şunları içersin: ürün ne, öne çıkan 3-4 özelliği (art arda, ayrı kısa cümlelerle), bir eksisi ya da
+dikkat edilecek nokta, kimler için mantıklı olduğu.
+
+Bu videoda ekran_notlari ÜRÜNÜN ÖZELLİKLERİDİR: 3-4 madde, her biri en fazla 4 kelime (ör. "1,3 inç dokunmatik ekran"),
+metinde anlatıldıkları sırayla ve her birinin cumle_baslangici o özelliğin anlatıldığı cümlenin ilk 3 kelimesi olsun.
+Ekranda ürün görselinin yanında oklarla sırayla listelenecekler.
 
 ÇOK ÖNEMLİ doğruluk kuralları:
 - Yalnızca seçtiğin haberde yazan bilgileri kullan; haberde olmayan özellik, rakam veya fiyat UYDURMA.

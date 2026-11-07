@@ -85,21 +85,45 @@ def not_zamanlari(notlar: list[dict], kelimeler: list[dict], toplam: float,
         baslangiclar = [ilk + i * aralik for i in range(len(notlar))]
 
     sirali = sorted(zip(baslangiclar, notlar), key=lambda x: x[0])
+    # Başlık ekrandayken veya birbirine çok yakın gelen maddeleri kaydır (en az 1,3 sn arayla).
+    onceki = ilk - 1.3
+    duzeltilmis = []
+    for bas, n in sirali:
+        bas = max(bas, ilk, onceki + 1.3)
+        duzeltilmis.append((bas, n))
+        onceki = bas
+    sirali = duzeltilmis
     sonuc = []
     for i, (bas, n) in enumerate(sirali):
-        bas = max(bas, ilk)
         sonraki = sirali[i + 1][0] if i + 1 < len(sirali) else toplam - 0.5
         bitis = min(bas + 4.5, sonraki - 0.15, toplam - 0.3)
-        if bitis - bas < 1.5:
-            continue
         sonuc.append({"baslangic": bas, "bitis": bitis, "metin": n["metin"], "sira": len(sonuc) + 1})
     return sonuc
+
+
+# Ürün vitrini düzeni: ürün görseli solda, özellik listesi sağda.
+VITRIN_GORSEL = (600, 1150)   # ürün görselinin sığacağı alan (genişlik, yükseklik)
+VITRIN_OK_X = 600             # okun başladığı x
+VITRIN_LISTE_X = 700          # özellik yazılarının başladığı x
+VITRIN_Y = [600, 800, 1000, 1200]
+
+
+def vitrin_plani(kartlar: list[dict], toplam: float) -> dict | None:
+    """Ürün özelliklerinin sırayla listeleneceği zaman aralığını çıkarır (en az 2 özellik gerekir)."""
+    maddeler = [{"baslangic": k["baslangic"], "metin": k["metin"]} for k in kartlar][:len(VITRIN_Y)]
+    if len(maddeler) < 2:
+        return None
+    bas = max(maddeler[0]["baslangic"] - 0.3, 3.1)
+    bit = min(maddeler[-1]["baslangic"] + 4.0, toplam - 0.3)
+    if bit - bas < 3:
+        return None
+    return {"baslangic": bas, "bitis": bit, "maddeler": maddeler}
 
 
 # ---------- ASS yazı katmanı ----------
 
 def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: float,
-            yol: Path, kanca_suresi: float = 3.0) -> None:
+            yol: Path, kanca_suresi: float = 3.0, vitrin: dict | None = None) -> None:
     font = ayarlar.ALTYAZI_FONT
     bicim = ("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
              "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
@@ -116,6 +140,10 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
         f"Style: Kart,{font},80,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,34,0,5,100,100,0,1",
         # Kart etiketi: sarı zemin üzerinde siyah, küçük.
         f"Style: Etiket,{font},52,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,2,0,3,14,0,5,0,0,0,1",
+        # Ürün vitrini: sağdaki özellik maddeleri ve başlık.
+        f"Style: Ozellik,{font},54,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,4,{VITRIN_LISTE_X},30,0,1",
+        f"Style: VitrinBaslik,{font},46,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,3,0,3,14,0,4,{VITRIN_LISTE_X},30,0,1",
+        f"Style: Ok,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,4,0,0,0,1",
         f"Style: Cubuk,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
         "",
         "[Events]",
@@ -149,8 +177,10 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
 
     # Bilgi kartları: soldan kayarak gelir, sağa kayarak çıkar.
     ky = 560
-    for kart in kartlar:
+    for kart in ([] if vitrin else kartlar):
         bas, bit = kart["baslangic"], kart["bitis"]
+        if bit - bas < 1.5:  # çok kısa kalan kart gösterilmez
+            continue
         ms = int((bit - bas) * 1000)
         olay(2, bas, bit, "Etiket",
              rf"{{\move(-300,{ky - 150},540,{ky - 150},60,340)\t({ms - 250},{ms},\alpha&HFF&)}}"
@@ -158,6 +188,27 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
         olay(1, bas, bit, "Kart",
              rf"{{\move(-700,{ky},540,{ky},0,300)\t({ms - 250},{ms},\alpha&HFF&)}}"
              + tr_buyuk(_temiz(kart["metin"])))
+
+    # Ürün vitrini: sağda başlık, ardından her özellik oktan çıkarak sırayla eklenir ve listede kalır.
+    if vitrin:
+        vb, vs = vitrin["baslangic"], vitrin["bitis"]
+        cikis = int((vs - vb) * 1000)
+        olay(2, vb, vs, "VitrinBaslik",
+             rf"{{\q2\pos({VITRIN_LISTE_X},{VITRIN_Y[0] - 140})\fscx40\fscy40\t(0,160,\fscx100\fscy100)"
+             rf"\t({cikis - 250},{cikis},\alpha&HFF&)}}ÖNE ÇIKANLAR")
+        for i, madde in enumerate(vitrin["maddeler"]):
+            mb = madde["baslangic"]
+            y = VITRIN_Y[i]
+            ms = int((vs - mb) * 1000)
+            kaybol = rf"\t({ms - 250},{ms},\alpha&HFF&)"
+            # Ok: soldan sağa doğru çizilir.
+            olay(2, mb, vs, "Ok",
+                 rf"{{\pos({VITRIN_OK_X},{y})\fscx0\t(0,180,\fscx100){kaybol}\p1}}"
+                 "m 0 -5 l 66 -5 l 66 -17 l 92 0 l 66 17 l 66 5 l 0 5{\\p0}")
+            # Özellik yazısı: sağdan kayarak gelir, hafifçe büyüyüp yerine oturur.
+            olay(2, mb + 0.12, vs, "Ozellik",
+                 rf"{{\move({G + 40},{y},{VITRIN_LISTE_X},{y},0,220)\t(220,320,\fscx106\fscy106)"
+                 rf"\t(320,420,\fscx100\fscy100){kaybol}}}" + tr_buyuk(_temiz(madde["metin"])))
 
     # İlerleme çubuğu: video boyunca soldan sağa dolar.
     olay(4, 0, toplam, "Cubuk",
@@ -189,8 +240,27 @@ def _cekim_sirasi(n: int, klip_sayisi: int, resim_sayisi: int) -> list[tuple[str
     return sira
 
 
+def _efekt_dosyalari(klasor: Path) -> dict[str, Path]:
+    """Telifsiz ses efektlerini FFmpeg ile sentezler (indirme gerekmez)."""
+    tarifler = {
+        # Kısa, aşağı doğru kayan "pop".
+        "pop": ["-f", "lavfi", "-i", "aevalsrc=0.7*sin(2*PI*(1500-5200*t)*t)*exp(-26*t):s=44100:d=0.18"],
+        # Yumuşak "whoosh": filtrelenmiş pembe gürültü.
+        "whoosh": ["-f", "lavfi", "-i", "anoisesrc=d=0.45:c=pink:a=0.6:r=44100",
+                   "-af", "bandpass=f=1800:width_type=h:w=1600,afade=t=in:d=0.2,afade=t=out:st=0.2:d=0.25"],
+    }
+    dosyalar = {}
+    for ad, girdi in tarifler.items():
+        hedef = klasor / f"efekt_{ad}.wav"
+        subprocess.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *girdi, "-ac", "1", str(hedef)],
+                       check=True)
+        dosyalar[ad] = hedef
+    return dosyalar
+
+
 def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
-                  resimler: list[Path] | None = None) -> Path:
+                  resimler: list[Path] | None = None, vitrin: dict | None = None,
+                  ses_efektleri: bool = True) -> Path:
     """Arka plan çekimlerini (stok klipler ve ürün görselleri) geçişlerle birleştirir, yazıları ve sesi ekler.
 
     Altyazı dosyası ile çıktı aynı klasörde olmalı; FFmpeg o klasörde çalıştırılır
@@ -209,10 +279,29 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
         rastgele = random.Random(str(ses))
         kullanim: dict[int, int] = {}
         d = f"{L + XF:.3f}"
-        for i, (tur, j) in enumerate(_cekim_sirasi(n, len(klip_sure), len(resimler))):
+        sira = _cekim_sirasi(n, len(klip_sure), len(resimler))
+        if vitrin and resimler:
+            # Özellikler anlatılırken arka planda hep ürünün kendisi olsun (vitrin düzeni).
+            vitrin_sayac = 0
+            for i in range(n):
+                if i * L + L + XF > vitrin["baslangic"] and i * L < vitrin["bitis"]:
+                    sira[i] = ("vitrin", (vitrin_sayac // 2) % len(resimler))
+                    vitrin_sayac += 1
+        for i, (tur, j) in enumerate(sira):
             yakin = "(1+0.10*t/{d})" if i % 2 == 0 else "(1.10-0.10*t/{d})"  # yakınlaş / uzaklaş
             z = yakin.format(d=d)
-            if tur == "resim":
+            if tur == "vitrin":
+                vg, vy = VITRIN_GORSEL
+                girdiler += ["-loop", "1", "-framerate", str(FPS), "-t", d, "-i", str(resimler[j].resolve())]
+                filtreler.append(
+                    f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},format=yuv420p,split[b{i}][f{i}];"
+                    f"[b{i}]scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
+                    f"boxblur=34:3,eq=brightness=-0.30[bb{i}];"
+                    f"[f{i}]scale={vg}:{vy}:force_original_aspect_ratio=decrease,"
+                    f"scale=w='trunc(iw*(1+0.04*t/{d})/2)*2':h=-2:eval=frame[ff{i}];"
+                    f"[bb{i}][ff{i}]overlay=x=({vg}-w)/2+10:y=(H-h)/2-60,setsar=1,format=yuv420p,settb=AVTB[c{i}]"
+                )
+            elif tur == "resim":
                 girdiler += ["-loop", "1", "-framerate", str(FPS), "-t", d, "-i", str(resimler[j].resolve())]
                 filtreler.append(
                     f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},format=yuv420p,split[b{i}][f{i}];"
@@ -250,10 +339,31 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
     girdiler += ["-i", str(ses.resolve())]
     filtreler.append(f"[arka]subtitles={altyazi.name}[son]")
 
+    # Ses efektleri: geçişlerde hafif whoosh, vitrindeki her özellikte pop.
+    olaylar: list[tuple[str, float, float]] = []
+    if ses_efektleri:
+        if klip_sure or resimler:
+            olaylar += [("whoosh", max(i * L - 0.15, 0), 0.16) for i in range(1, n)]
+        if vitrin:
+            olaylar += [("pop", m["baslangic"] + 0.12, 0.55) for m in vitrin["maddeler"]]
+    ses_cikisi = f"{ses_indeksi}:a"
+    if olaylar:
+        efekt = _efekt_dosyalari(altyazi.parent)
+        etiketler = []
+        for k, (ad, zaman, seviye) in enumerate(olaylar):
+            indeks = ses_indeksi + 1 + k
+            girdiler += ["-i", str(efekt[ad].resolve())]
+            ms = int(zaman * 1000)
+            filtreler.append(f"[{indeks}:a]adelay={ms}|{ms},volume={seviye}[e{k}]")
+            etiketler.append(f"[e{k}]")
+        filtreler.append(f"[{ses_indeksi}:a]{''.join(etiketler)}amix=inputs={len(olaylar) + 1}:"
+                         f"duration=first:dropout_transition=0:normalize=0[ses]")
+        ses_cikisi = "[ses]"
+
     komut = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *girdiler,
         "-filter_complex", ";".join(filtreler),
-        "-map", "[son]", "-map", f"{ses_indeksi}:a",
+        "-map", "[son]", "-map", ses_cikisi,
         "-t", f"{toplam:.3f}",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-profile:v", "high",
         "-r", str(FPS),
