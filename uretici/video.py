@@ -108,7 +108,11 @@ def not_zamanlari(notlar: list[dict], kelimeler: list[dict], toplam: float,
 VITRIN_GORSEL = (600, 1150)   # ürün görselinin sığacağı alan (genişlik, yükseklik)
 VITRIN_OK_X = 600             # okun başladığı x
 VITRIN_LISTE_X = 700          # özellik yazılarının başladığı x
-VITRIN_Y = [500, 680, 860, 1040]
+VITRIN_Y = [500, 680, 860, 1040]  # en fazla 4 madde
+VITRIN_UST = 370              # ilk başlığın y'si
+VITRIN_BASLIK_ARALIK = 112
+VITRIN_MADDE_ARALIK = 150
+VITRIN_GRUP_BOSLUK = 30
 
 
 def vitrin_plani(kartlar: list[dict], toplam: float) -> dict | None:
@@ -122,6 +126,37 @@ def vitrin_plani(kartlar: list[dict], toplam: float) -> dict | None:
     if bit - bas < 3:
         return None
     return {"baslangic": bas, "bitis": bit, "maddeler": maddeler}
+
+
+def vitrin_satirlari(vitrin: dict) -> list[dict]:
+    """Vitrindeki satırlar (başlıklar ve maddeler), ekrandaki y konumları ve görünme zamanlarıyla.
+
+    Artı/eksi varsa iki ayrı başlık olur: ARTILAR ilk artıyla, EKSİLER ilk eksiden hemen önce gelir.
+    """
+    maddeler = vitrin["maddeler"]
+    ayri = any(m.get("tur") == "eksi" for m in maddeler) and any(m.get("tur") == "arti" for m in maddeler)
+    satirlar: list[dict] = []
+    y = VITRIN_UST
+    if not ayri:
+        satirlar.append({"tip": "baslik", "metin": "ÖNE ÇIKANLAR", "tur": None,
+                         "baslangic": vitrin["baslangic"], "y": y})
+        y += VITRIN_BASLIK_ARALIK
+    onceki_tur, onceki_zaman = None, vitrin["baslangic"]
+    for m in maddeler:
+        tur = m.get("tur")
+        if ayri and tur in ("arti", "eksi") and tur != onceki_tur:
+            if onceki_tur is not None:
+                y += VITRIN_GRUP_BOSLUK
+            zaman = max(m["baslangic"] - (0.0 if onceki_tur is None else 0.5), onceki_zaman + 0.3)
+            satirlar.append({"tip": "baslik", "metin": "ARTILAR" if tur == "arti" else "EKSİLER",
+                             "tur": tur, "baslangic": zaman, "y": y})
+            y += VITRIN_BASLIK_ARALIK
+            onceki_tur = tur
+        bas = max(m["baslangic"], satirlar[-1]["baslangic"] + 0.35) if satirlar else m["baslangic"]
+        satirlar.append({"tip": "madde", "metin": m["metin"], "tur": tur, "baslangic": bas, "y": y})
+        onceki_zaman = bas
+        y += VITRIN_MADDE_ARALIK
+    return satirlar
 
 
 # ---------- ASS yazı katmanı ----------
@@ -145,7 +180,7 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
         # Kart etiketi: sarı zemin üzerinde siyah, küçük.
         f"Style: Etiket,{font},52,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,2,0,3,14,0,5,0,0,0,1",
         # Ürün vitrini: sağdaki özellik maddeleri ve başlık.
-        f"Style: Ozellik,{font},50,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,4,{VITRIN_LISTE_X},30,0,1",
+        f"Style: Ozellik,{font},46,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,4,{VITRIN_LISTE_X},30,0,1",
         f"Style: VitrinBaslik,{font},46,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,3,0,3,14,0,4,{VITRIN_LISTE_X},30,0,1",
         f"Style: Ok,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,4,0,0,0,1",
         f"Style: Cubuk,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
@@ -195,30 +230,30 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
 
     # Ürün vitrini: sağda başlık, ardından her özellik oktan çıkarak sırayla eklenir ve listede kalır.
     if vitrin:
-        vb, vs = vitrin["baslangic"], vitrin["bitis"]
-        cikis = int((vs - vb) * 1000)
-        eksi_var = any(m.get("tur") == "eksi" for m in vitrin["maddeler"])
-        baslik = "ARTI & EKSİ" if eksi_var else "ÖNE ÇIKANLAR"
-        olay(2, vb, vs, "VitrinBaslik",
-             rf"{{\q2\pos({VITRIN_LISTE_X},{VITRIN_Y[0] - 125})\fscx40\fscy40\t(0,160,\fscx100\fscy100)"
-             rf"\t({cikis - 250},{cikis},\alpha&HFF&)}}" + baslik)
-        for i, madde in enumerate(vitrin["maddeler"]):
-            mb = madde["baslangic"]
-            y = VITRIN_Y[i]
-            ms = int((vs - mb) * 1000)
+        vs = vitrin["bitis"]
+        for satir in vitrin_satirlari(vitrin):
+            sb, y = satir["baslangic"], satir["y"]
+            ms = int((vs - sb) * 1000)
             kaybol = rf"\t({ms - 250},{ms},\alpha&HFF&)"
-            tur = madde.get("tur")
+            tur = satir.get("tur")
             renk = YESIL if tur == "arti" else KIRMIZI if tur == "eksi" else SARI
+            if satir["tip"] == "baslik":
+                # Başlık: ARTILAR (yeşil) / EKSİLER (kırmızı) / ÖNE ÇIKANLAR (sarı); büyüyerek belirir.
+                yazi_rengi = BEYAZ if tur in ("arti", "eksi") else "&H00000000&"
+                olay(2, sb, vs, "VitrinBaslik",
+                     rf"{{\q2\pos({VITRIN_LISTE_X},{y})\1c{yazi_rengi}\3c{renk}\fscx40\fscy40"
+                     rf"\t(0,160,\fscx100\fscy100){kaybol}}}" + satir["metin"])
+                continue
             on_ek = "+ " if tur == "arti" else "- " if tur == "eksi" else ""
             kutu = rf"\3c{renk}" if tur in ("arti", "eksi") else ""
             # Ok: soldan sağa doğru çizilir.
-            olay(2, mb, vs, "Ok",
+            olay(2, sb, vs, "Ok",
                  rf"{{\pos({VITRIN_OK_X},{y})\c{renk}\fscx0\t(0,180,\fscx100){kaybol}\p1}}"
                  "m 0 -5 l 66 -5 l 66 -17 l 92 0 l 66 17 l 66 5 l 0 5{\\p0}")
             # Özellik yazısı: sağdan kayarak gelir, hafifçe büyüyüp yerine oturur.
-            olay(2, mb + 0.12, vs, "Ozellik",
+            olay(2, sb + 0.12, vs, "Ozellik",
                  rf"{{\move({G + 40},{y},{VITRIN_LISTE_X},{y},0,220)\t(220,320,\fscx106\fscy106)"
-                 rf"\t(320,420,\fscx100\fscy100){kutu}{kaybol}}}" + on_ek + tr_buyuk(_temiz(madde["metin"])))
+                 rf"\t(320,420,\fscx100\fscy100){kutu}{kaybol}}}" + on_ek + tr_buyuk(_temiz(satir["metin"])))
 
     # İlerleme çubuğu: video boyunca soldan sağa dolar.
     olay(4, 0, toplam, "Cubuk",
@@ -357,8 +392,12 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
         if klip_sure or resimler:
             olaylar += [("whoosh", max(i * L - 0.15, 0), 0.16) for i in range(1, n)]
         if vitrin:
-            olaylar += [("pop_eksi" if m.get("tur") == "eksi" else "pop", m["baslangic"] + 0.12, 0.55)
-                        for m in vitrin["maddeler"]]
+            for satir in vitrin_satirlari(vitrin):
+                ses_adi = "pop_eksi" if satir.get("tur") == "eksi" else "pop"
+                if satir["tip"] == "baslik":
+                    olaylar.append((ses_adi, satir["baslangic"], 0.35))
+                else:
+                    olaylar.append((ses_adi, satir["baslangic"] + 0.12, 0.55))
     # Ses karışımı: konuşma + (konuşurken kendiliğinden kısılan) arka plan müziği + efektler.
     karisim: list[str] = []
     sonraki = ses_indeksi + 1

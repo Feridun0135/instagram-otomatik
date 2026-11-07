@@ -122,6 +122,7 @@ Daha önce işlenen konular (TEKRARLAMA):
 
 Analiz OBJEKTİF olsun ve şu sırayla ilerlesin: ürün ne (tek cümle), 2 artısı, 2 eksisi, kime değer / kime değmez.
 Artılar ve eksiler dengeli olsun; eksileri yumuşatma, artıları abartma. Her artı ve eksiyi ayrı kısa bir cümleyle söyle.
+Eksilere geçerken bunu sesli olarak da belirt (ör. "Gelelim eksilere", "Şimdi işin öbür tarafı"); ekranda o an EKSİLER başlığı çıkacak.
 
 Eksiler için doğruluk kuralı: eksi uydurma. Eksi olarak yalnızca şunları kullan:
 - haberde açıkça geçen bir dezavantaj (yüksek fiyat, eksik özellik, sınırlı satış bölgesi, abonelik şartı vb.),
