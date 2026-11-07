@@ -16,6 +16,8 @@ Bu dosya kesinleşmiş ve gelecekteki çalışmaları etkileyecek kararları kay
 | 2026-11-06 | Açıklama: kanca cümlesi, kısa öz, harekete çağrı ve soru; en fazla 5 etiket | Kullanıcı kanca cümleli açıklama ve etiket istedi; Instagram 2026'da gönderi başına 5 etiket sınırı getirdi | aktif | Açıklama üretimi |
 | 2026-11-06 | Video stili: yaklaşık 2,2 sn'lik hızlı çekimler ve geçişler, %15 hızlı seslendirme, kelime vurgulu altyazı, bilgi kartı animasyonları, ilerleme çubuğu | Kullanıcı daha akıcı video, hızlı konuşma ve bilgiler için animasyon istedi | aktif | `uretici/video.py`, seslendirme |
 | 2026-11-06 | Stok videolar Pixabay'den alınır | Pexels API anahtarı alınamadı | aktif | `uretici/gorseller.py` |
+| 2026-11-07 | Anlatıcı karakteri samimi abi; kapanış imzası "Takipte kal, yarın yine buradayım."; yapay zekâ kalıp ifadeleri yasak | Kullanıcı karakter olarak samimi abiyi seçti; içeriklerin daha doğal görünmesi isteniyor | aktif | İçerik istemi (`uretici/icerik.py`) |
+| 2026-11-07 | Ürün analizlerinde ürünün gerçek görselleri haber sayfasından/RSS'ten indirilir ve stok videolarla dönüşümlü gösterilir; açıklamada görsel kaynağı belirtilir. Başka kanalların videoları (ör. YouTube) indirilmez | Kullanıcı tanıtılan ürünün gerçek görsellerinin kullanılmasını istedi; video indirme platform kurallarına ve telif hakkına aykırı | aktif | `uretici/haberler.py`, `uretici/video.py` |
 
 ## Kullanım kuralları
 

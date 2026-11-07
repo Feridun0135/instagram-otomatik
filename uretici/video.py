@@ -168,8 +168,30 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
 
 # ---------- arka plan ve birleştirme ----------
 
-def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path) -> Path:
-    """Arka plan çekimlerini geçişlerle birleştirir, yazıları ve sesi ekler.
+def _sureler(dosyalar: list[Path]) -> list[tuple[Path, float]]:
+    sonuc = []
+    for k in dosyalar:
+        try:
+            sonuc.append((k, sure_olc(k)))
+        except (subprocess.CalledProcessError, KeyError, ValueError):
+            pass
+    return [(k, s) for k, s in sonuc if s > 0.5]
+
+
+def _cekim_sirasi(n: int, klip_sayisi: int, resim_sayisi: int) -> list[tuple[str, int]]:
+    """Hangi çekimde ne gösterileceği: ürün görseli varsa ilk çekim ve sonra her iki çekimden biri görsel."""
+    sira = []
+    for i in range(n):
+        if resim_sayisi and (not klip_sayisi or i % 2 == 0):
+            sira.append(("resim", (i // (1 if not klip_sayisi else 2)) % resim_sayisi))
+        else:
+            sira.append(("klip", (i // (2 if resim_sayisi else 1)) % klip_sayisi))
+    return sira
+
+
+def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
+                  resimler: list[Path] | None = None) -> Path:
+    """Arka plan çekimlerini (stok klipler ve ürün görselleri) geçişlerle birleştirir, yazıları ve sesi ekler.
 
     Altyazı dosyası ile çıktı aynı klasörde olmalı; FFmpeg o klasörde çalıştırılır
     (Windows'ta altyazı yolundaki ':' karakteri sorun çıkarmasın diye).
@@ -179,35 +201,40 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path) ->
     girdiler: list[str] = []
     filtreler: list[str] = []
 
-    if klipler:
-        sureler = []
-        for k in klipler:
-            try:
-                sureler.append(sure_olc(k))
-            except (subprocess.CalledProcessError, KeyError, ValueError):
-                sureler.append(0.0)
-        gecerli = [(k, s) for k, s in zip(klipler, sureler) if s > 0.5]
-        klipler = [k for k, _ in gecerli]
-        sureler = [s for _, s in gecerli]
+    klip_sure = _sureler(klipler or [])
+    resimler = list(resimler or [])
 
-    if klipler:
+    if klip_sure or resimler:
         n = max(1, math.ceil((toplam - XF) / L))
         rastgele = random.Random(str(ses))
-        for i in range(n):
-            ki = i % len(klipler)
-            tur = i // len(klipler)
-            bos = max(sureler[ki] - (L + XF), 0.0)
-            ofset = (tur * (L + XF) * 0.9) % bos if bos > 0 else 0.0
-            girdiler += ["-stream_loop", "-1", "-ss", f"{ofset:.2f}", "-t", f"{L + XF:.3f}",
-                         "-i", str(klipler[ki].resolve())]
-            z = "(1+0.10*t/{d})" if i % 2 == 0 else "(1.10-0.10*t/{d})"  # yakınlaş / uzaklaş
-            z = z.format(d=f"{L + XF:.3f}")
-            filtreler.append(
-                f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},"
-                f"scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
-                f"scale=w='trunc({G}*{z}/2)*2':h=-2:eval=frame,crop={G}:{Y},"
-                f"setsar=1,format=yuv420p,settb=AVTB[c{i}]"
-            )
+        kullanim: dict[int, int] = {}
+        d = f"{L + XF:.3f}"
+        for i, (tur, j) in enumerate(_cekim_sirasi(n, len(klip_sure), len(resimler))):
+            yakin = "(1+0.10*t/{d})" if i % 2 == 0 else "(1.10-0.10*t/{d})"  # yakınlaş / uzaklaş
+            z = yakin.format(d=d)
+            if tur == "resim":
+                girdiler += ["-loop", "1", "-framerate", str(FPS), "-t", d, "-i", str(resimler[j].resolve())]
+                filtreler.append(
+                    f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},format=yuv420p,split[b{i}][f{i}];"
+                    f"[b{i}]scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
+                    f"boxblur=30:3,eq=brightness=-0.18[bb{i}];"
+                    f"[f{i}]scale={G - 80}:{int(Y * 0.62)}:force_original_aspect_ratio=decrease,"
+                    f"scale=w='trunc(iw*{z}/2)*2':h=-2:eval=frame[ff{i}];"
+                    f"[bb{i}][ff{i}]overlay=x=(W-w)/2:y=(H-h)/2-60,setsar=1,format=yuv420p,settb=AVTB[c{i}]"
+                )
+            else:
+                klip, sure = klip_sure[j]
+                tekrar = kullanim.get(j, 0)
+                kullanim[j] = tekrar + 1
+                bos = max(sure - (L + XF), 0.0)
+                ofset = (tekrar * (L + XF) * 0.9) % bos if bos > 0 else 0.0
+                girdiler += ["-stream_loop", "-1", "-ss", f"{ofset:.2f}", "-t", d, "-i", str(klip.resolve())]
+                filtreler.append(
+                    f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},"
+                    f"scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
+                    f"scale=w='trunc({G}*{z}/2)*2':h=-2:eval=frame,crop={G}:{Y},"
+                    f"setsar=1,format=yuv420p,settb=AVTB[c{i}]"
+                )
         onceki = "c0"
         for i in range(1, n):
             gecis = rastgele.choice(GECISLER)

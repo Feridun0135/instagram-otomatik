@@ -60,6 +60,13 @@ def main() -> int:
         gruplar = seslendirme.gruplara_ayir(kelimeler)
 
         print("3/4 Stok görüntüler indiriliyor...")
+        urun_gorselleri = []
+        if veri.get("kaynak_link"):
+            from uretici import haberler
+            urun_gorselleri = haberler.urun_gorsellerini_indir(
+                {"link": veri["kaynak_link"], "gorseller": veri.get("kaynak_gorselleri", [])},
+                klasor / "urun_gorselleri")
+            veri["urun_gorseli_var"] = bool(urun_gorselleri)
         klipler = gorseller.videolari_indir(veri["gorsel_aramalari"], klasor / "klipler",
                                            adet=ayarlar.KLIP_SAYISI)
 
@@ -68,7 +75,7 @@ def main() -> int:
         toplam = video.sure_olc(ses) + 0.5
         kartlar = video.not_zamanlari(veri.get("ekran_notlari") or [], kelimeler, toplam)
         video.ass_yaz(gruplar, veri["kanca"], kartlar, toplam, altyazi)
-        cikti = video.video_olustur(ses, klipler, altyazi, klasor / "video.mp4")
+        cikti = video.video_olustur(ses, klipler, altyazi, klasor / "video.mp4", resimler=urun_gorselleri)
 
         (klasor / "aciklama.txt").write_text(icerik.instagram_aciklamasi(veri), encoding="utf-8")
         (klasor / "icerik.json").write_text(json.dumps(veri, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -38,13 +38,21 @@ def kategori_sec(gecmis: list[dict]) -> str:
     return DONGU[len(gecmis) % len(DONGU)]
 
 
-_ORTAK_KURALLAR = """Kurallar:
+_ORTAK_KURALLAR = """Anlatıcı karakteri: samimi bir abi.
+- Küçük kardeşine ya da yakın arkadaşına anlatır gibi sıcak, rahat ve hafif esprili konuşur; abartmaz, bağırmaz.
+- "Bak şimdi", "açık konuşayım", "bence", "ben olsam" gibi doğal günlük ifadeleri yerinde ve az kullanır.
+- Ürünlerde net kişisel görüş verir: kime değer, kime değmez; artısını da eksisini de dürüstçe söyler.
+- Kapanışı her zaman şu imza cümlesiyle yapar: "Takipte kal, yarın yine buradayım."
+- Yapay zekâ kalıpları YASAK: "dijital dünyada", "teknolojinin hızla geliştiği", "hayatınızı kolaylaştıracak",
+  "unutmayın", "sonuç olarak", "heyecan verici", "devrim niteliğinde", "merhaba arkadaşlar".
+
+Kurallar:
 - Seslendirme metni 60-90 kelime olsun (yaklaşık 25-35 saniye). Kısa, tempolu cümleler kur.
 - İlk cümle izleyiciyi durduracak güçlü bir kanca olsun (merak, şaşırtıcı bilgi veya doğrudan fayda).
 - Sade, samimi, günlük Türkçe kullan; "sen" diye hitap et.
 - Kesin olarak doğru olduğundan emin olmadığın bilgiyi yazma.
 - Metinde emoji, madde işareti veya parantez kullanma (seslendirilecek).
-- Son cümle takip etmeye veya kaydetmeye davet etsin.
+- Son cümle imza cümlesi olsun.
 
 Instagram açıklaması (aciklama) kuralları:
 - İlk satır tek başına okunduğunda kaydırmayı durduracak, en fazla 120 karakterlik çarpıcı bir kanca cümlesi olsun.
@@ -94,13 +102,15 @@ def _urun_istemi(haberler: list[dict], eski_konular: list[str], eski_linkler: se
         if h["link"] in eski_linkler:
             continue
         tarih = h["tarih"].strftime("%Y-%m-%d") if h.get("tarih") else "?"
-        satirlar.append(f"[{i}] ({h['kaynak']}, {tarih}) {h['baslik']}\n    {h['ozet']}\n    {h['link']}")
+        gorsel = " [görsel var]" if h.get("gorseller") else ""
+        satirlar.append(f"[{i}] ({h['kaynak']}, {tarih}){gorsel} {h['baslik']}\n    {h['ozet']}\n    {h['link']}")
     eskiler = "\n".join(f"- {k}" for k in eski_konular[-60:]) or "- (henüz yok)"
     return f"""Türkçe bir Instagram Reels teknoloji hesabı için YENİ ÇIKAN BİR ÜRÜNÜN ANALİZİ videosu hazırla.
 
 Aşağıda son günlerin teknoloji haberleri var. Bunlardan, izleyicinin en çok ilgisini çekecek
 yeni çıkmış veya yeni duyurulmuş TEK bir ürünü seç (telefon, bilgisayar, tablet, kulaklık, saat,
 aksesuar, oyun konsolu, yapay zekâ cihazı veya uygulaması gibi). Söylenti ve sızıntıları seçme.
+Videoda ürünün gerçek görselleri kullanılacağı için, mümkünse "[görsel var]" işaretli haberlerden seç.
 
 Haberler:
 {chr(10).join(satirlar)}
@@ -187,6 +197,7 @@ def icerik_uret() -> dict:
                 secilen = haberler[int(icerik.get("kaynak_no")) - 1]
                 icerik["kaynak_adi"] = secilen["kaynak"]
                 icerik["kaynak_link"] = secilen["link"]
+                icerik["kaynak_gorselleri"] = secilen.get("gorseller", [])
             except (TypeError, ValueError, IndexError):
                 pass
             icerik["kategori"] = kategori
@@ -208,6 +219,9 @@ def instagram_aciklamasi(icerik: dict) -> str:
             etiketler.append(e)
     parcalar = [icerik["aciklama"].strip()]
     if icerik.get("kaynak_adi"):
-        parcalar.append(f"Kaynak: {icerik['kaynak_adi']}")
+        if icerik.get("urun_gorseli_var"):
+            parcalar.append(f"Kaynak ve ürün görselleri: {icerik['kaynak_adi']}")
+        else:
+            parcalar.append(f"Kaynak: {icerik['kaynak_adi']}")
     parcalar.append(" ".join(etiketler[:5]))
     return "\n\n".join(p for p in parcalar if p)
