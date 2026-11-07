@@ -35,6 +35,8 @@ PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "")
 TTS_SES = os.getenv("TTS_SES", "tr-TR-AhmetNeural")
 # Konuşma hızı: "+0%" normal, "+15%" biraz hızlı, "+25%" hızlı.
 TTS_HIZ = os.getenv("TTS_HIZ", "+15%")
+# Seslendirme motoru: "edge" (hazır Türkçe ses) veya "klon" (kullanıcının kendi sesi, bkz. ses_sifrele.py).
+SES_MOTORU = os.getenv("SES_MOTORU", "edge").strip().lower() or "edge"
 ALTYAZI_FONT = os.getenv("ALTYAZI_FONT", "Arial" if os.name == "nt" else "DejaVu Sans")
 
 VIDEO_GENISLIK = 1080

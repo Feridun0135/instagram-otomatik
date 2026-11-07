@@ -31,7 +31,20 @@ async def _seslendir(metin: str, ses_yolu: Path) -> list[dict]:
 
 
 def seslendir(metin: str, ses_yolu: Path) -> list[dict]:
-    """Ses dosyasını yazar; kelime veya cümle zamanlamalarını döndürür."""
+    """Ses dosyasını yazar; kelime veya cümle zamanlamalarını döndürür.
+
+    SES_MOTORU=klon ise kullanıcının kendi sesi kullanılır; bir sorun olursa o gün hazır sese geri dönülür,
+    böylece paylaşım aksamaz.
+    """
+    if ayarlar.SES_MOTORU == "klon":
+        from . import klon_ses
+        if klon_ses.hazir_mi():
+            try:
+                return klon_ses.seslendir(metin, ses_yolu)
+            except Exception as hata:  # model indirilemedi, bellek yetmedi vb.
+                print(f"    Uyarı: kendi sesinle seslendirme başarısız ({type(hata).__name__}: {hata}); hazır ses kullanılıyor.")
+        else:
+            print("    Uyarı: şifreli ses örneği veya SES_SIFRESI yok; hazır ses kullanılıyor.")
     return asyncio.run(_seslendir(metin, ses_yolu))
 
 

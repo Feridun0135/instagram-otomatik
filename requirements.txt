@@ -1,3 +1,4 @@
 requests>=2.31
 edge-tts>=7.2
-numpy>=1.26
+numpy>=1.24
+cryptography>=42

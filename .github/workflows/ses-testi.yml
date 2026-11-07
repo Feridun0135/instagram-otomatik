@@ -1,0 +1,44 @@
+# Kendi sesinle deneme seslendirmesi üretir. Hiçbir şey paylaşmaz.
+# Actions > Ses Testi > Run workflow ile çalıştır; bitince sayfanın altındaki "ses-testi" dosyasını indir.
+name: Ses Testi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ses-testi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: FFmpeg kur
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Ses modeli önbelleği
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: chatterbox-modeli-v1
+
+      - name: Paketleri kur
+        run: |
+          pip install -r requirements.txt
+          pip install chatterbox-tts --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Deneme seslendirmesi üret
+        env:
+          SES_SIFRESI: ${{ secrets.SES_SIFRESI }}
+        run: python ses_testi.py
+
+      - name: Sesi indirilebilir sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: ses-testi
+          path: cikti/ses_testi.mp3
+          retention-days: 7

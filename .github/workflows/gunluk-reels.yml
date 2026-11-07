@@ -23,7 +23,7 @@ concurrency:
 jobs:
   uret-ve-paylas:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     environment:
       name: github-pages
       url: ${{ steps.yayin.outputs.page_url }}
@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
           cache: pip
 
       - name: FFmpeg ve yazı tipi kur
@@ -41,11 +41,25 @@ jobs:
       - name: Paketleri kur
         run: pip install -r requirements.txt
 
+      # Kendi sesinle seslendirme açıksa (Settings > Secrets and variables > Actions > Variables: SES_MOTORU=klon)
+      - name: Ses modeli önbelleği
+        if: vars.SES_MOTORU == 'klon'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: chatterbox-modeli-v1
+
+      - name: Kendi ses modelini kur
+        if: vars.SES_MOTORU == 'klon'
+        run: pip install chatterbox-tts --extra-index-url https://download.pytorch.org/whl/cpu
+
       - name: Videoyu üret
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          SES_MOTORU: ${{ vars.SES_MOTORU }}
+          SES_SIFRESI: ${{ secrets.SES_SIFRESI }}
         run: python calistir.py
 
       - name: Yayın klasörünü hazırla
