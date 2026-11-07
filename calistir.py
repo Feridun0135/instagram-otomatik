@@ -55,8 +55,9 @@ def main() -> int:
 
         print("2/4 Seslendiriliyor...")
         ses = klasor / "ses.mp3"
-        bolumler = seslendirme.seslendir(veri["metin"], ses)
-        kelimeler = seslendirme.kelimelere_bol(bolumler)
+        konusma = (veri.get("seslendirme_metni") or veri["metin"]).strip()
+        bolumler = seslendirme.seslendir(konusma, ses)
+        kelimeler = seslendirme.yaziya_esle(seslendirme.kelimelere_bol(bolumler), konusma, veri["metin"])
         gruplar = seslendirme.gruplara_ayir(kelimeler)
 
         print("3/4 Stok görüntüler indiriliyor...")

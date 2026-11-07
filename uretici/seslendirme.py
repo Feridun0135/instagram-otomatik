@@ -85,3 +85,31 @@ def gruplara_ayir(kelimeler: list[dict], en_fazla: int = 3, duraklama: float = 0
     if grup:
         gruplar.append(grup)
     return gruplar
+
+
+def _cumleler(metin: str) -> list[list[str]]:
+    import re
+    return [c.split() for c in re.split(r"(?<=[.!?…])\s+", metin.strip()) if c.split()]
+
+
+def yaziya_esle(kelimeler: list[dict], konusma_metni: str, yazi_metni: str) -> list[dict]:
+    """Konuşma diliyle seslendirilmiş kelimelerin zamanlamasını düzgün yazımlı metne aktarır (altyazı için).
+
+    Cümle sayıları tutarsa her cümlenin süresi, yazılı cümlenin kelimelerine uzunluklarına göre dağıtılır.
+    Tutmazsa konuşma dilindeki kelimeler olduğu gibi kullanılır.
+    """
+    konusma, yazi = _cumleler(konusma_metni), _cumleler(yazi_metni)
+    if not kelimeler or len(konusma) != len(yazi) or sum(len(c) for c in konusma) != len(kelimeler):
+        return kelimeler
+    sonuc, i = [], 0
+    for k_cumle, y_cumle in zip(konusma, yazi):
+        parca = kelimeler[i:i + len(k_cumle)]
+        i += len(k_cumle)
+        bas, bit = parca[0]["baslangic"], parca[-1]["bitis"]
+        toplam_harf = sum(len(w) for w in y_cumle) or 1
+        t = bas
+        for w in y_cumle:
+            pay = (bit - bas) * len(w) / toplam_harf
+            sonuc.append({"baslangic": t, "bitis": t + pay, "metin": w})
+            t += pay
+    return sonuc

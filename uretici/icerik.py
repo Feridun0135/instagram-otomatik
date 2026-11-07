@@ -56,6 +56,14 @@ Kurallar:
 - Metinde emoji, madde işareti veya parantez kullanma (seslendirilecek).
 - Son cümle imza cümlesi olsun.
 
+Konuşma dili (seslendirme_metni) kuralları:
+- Bir dublaj sanatçısının doğal konuştuğu gibi, günlük konuşma Türkçesiyle yaz; okunduğu gibi seslendirilecek.
+- Gelecek zaman ve benzeri ekleri konuşulduğu gibi yaz: yapacağım -> yapıcam, olacak -> olucak, gelecek -> gelicek,
+  göreceksin -> görceksin, söyleyeceğim -> söylicem, edeceğiz -> edicez, anlatacağım -> anlatıcam.
+- "bir" belirsizlik anlamındaysa "bi" yaz (bir şey -> bi şey, bir de -> bi de); sayı anlamındaysa "bir" kalsın.
+- Abartma: "yapıyorum" gibi zaten doğal olan kelimeleri bozma, argo ve yazım hatası ekleme, anlaşılırlığı koru.
+- Rakamları ve kısaltmaları okunacağı gibi yaz (ör. "1,3 inç" -> "bir virgül üç inç", "GB" -> "gigabayt").
+
 Instagram açıklaması (aciklama) kuralları:
 - İlk satır tek başına okunduğunda kaydırmayı durduracak, en fazla 120 karakterlik çarpıcı bir kanca cümlesi olsun.
 - Sonra boş satır ve 2-4 kısa satırda videonun özü (her satır en fazla bir emoji ile başlayabilir).
@@ -70,7 +78,8 @@ Etiket kuralları (Instagram gönderi başına en fazla 5 etiket kabul ediyor):
 _JSON_SEMASI = """{{
   "konu": "kısa konu başlığı",
   "kanca": "ekranın üstünde ilk saniyelerde görünecek en fazla 6 kelimelik başlık",
-  "metin": "seslendirilecek tam metin",
+  "metin": "seslendirilecek tam metin, düzgün yazım kurallarıyla (ekranda altyazı olarak görünecek)",
+  "seslendirme_metni": "metin ile AYNI cümleler, aynı sırada ve aynı sayıda; ama konuşma dilinde yazılmış hali",
   "aciklama": "kurallara uygun Instagram açıklaması (satır sonları \\n ile)",
   "etiketler": ["tam 5 etiket, # olmadan, boşluksuz"],
   "gorsel_aramalari": ["stok video aramak için 4 kısa, birbirinden farklı İngilizce arama ifadesi"],
