@@ -75,9 +75,13 @@ def main() -> int:
         toplam = video.sure_olc(ses) + 0.5
         kartlar = video.not_zamanlari(veri.get("ekran_notlari") or [], kelimeler, toplam)
         vitrin = video.vitrin_plani(kartlar, toplam) if urun_gorselleri else None
+        muzik_dosyasi = None
+        if ayarlar.MUZIK:
+            from uretici import muzik
+            muzik_dosyasi = muzik.muzik_hazirla(veri["kategori"], toplam, klasor / "muzik.wav")
         video.ass_yaz(gruplar, veri["kanca"], kartlar, toplam, altyazi, vitrin=vitrin)
         cikti = video.video_olustur(ses, klipler, altyazi, klasor / "video.mp4", resimler=urun_gorselleri,
-                                    vitrin=vitrin)
+                                    vitrin=vitrin, muzik=muzik_dosyasi)
 
         (klasor / "aciklama.txt").write_text(icerik.instagram_aciklamasi(veri), encoding="utf-8")
         (klasor / "icerik.json").write_text(json.dumps(veri, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -44,3 +44,6 @@ VIDEO_FPS = 30
 CEKIM_SURESI = float(os.getenv("CEKIM_SURESI", "2.2"))
 GECIS_SURESI = 0.3
 KLIP_SAYISI = int(os.getenv("KLIP_SAYISI", "6"))
+# Arka plan müziği: MUZIK=0 kapatır; MUZIK_SEVIYE müziğin ses seviyesi (konuşma sırasında ayrıca kısılır).
+MUZIK = os.getenv("MUZIK", "1") != "0"
+MUZIK_SEVIYE = float(os.getenv("MUZIK_SEVIYE", "0.14"))

@@ -272,7 +272,7 @@ def _efekt_dosyalari(klasor: Path) -> dict[str, Path]:
 
 def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
                   resimler: list[Path] | None = None, vitrin: dict | None = None,
-                  ses_efektleri: bool = True) -> Path:
+                  ses_efektleri: bool = True, muzik: Path | None = None) -> Path:
     """Arka plan çekimlerini (stok klipler ve ürün görselleri) geçişlerle birleştirir, yazıları ve sesi ekler.
 
     Altyazı dosyası ile çıktı aynı klasörde olmalı; FFmpeg o klasörde çalıştırılır
@@ -359,19 +359,36 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
         if vitrin:
             olaylar += [("pop_eksi" if m.get("tur") == "eksi" else "pop", m["baslangic"] + 0.12, 0.55)
                         for m in vitrin["maddeler"]]
-    ses_cikisi = f"{ses_indeksi}:a"
+    # Ses karışımı: konuşma + (konuşurken kendiliğinden kısılan) arka plan müziği + efektler.
+    karisim: list[str] = []
+    sonraki = ses_indeksi + 1
+    konusma = f"[{ses_indeksi}:a]"
+    if muzik:
+        girdiler += ["-stream_loop", "-1", "-i", str(Path(muzik).resolve())]
+        filtreler.append(f"[{ses_indeksi}:a]asplit=2[konus][yan]")
+        filtreler.append(
+            f"[{sonraki}:a]aformat=sample_rates=44100:channel_layouts=mono,atrim=0:{toplam:.3f},"
+            f"volume={ayarlar.MUZIK_SEVIYE},afade=t=in:d=1,afade=t=out:st={max(toplam - 1.5, 0):.3f}:d=1.5[m0]"
+        )
+        # Konuşma varken müziği biraz daha kıs (sidechain ducking).
+        filtreler.append("[m0][yan]sidechaincompress=threshold=0.02:ratio=4:attack=20:release=400[muz]")
+        konusma = "[konus]"
+        karisim.append("[muz]")
+        sonraki += 1
     if olaylar:
         efekt = _efekt_dosyalari(altyazi.parent)
-        etiketler = []
         for k, (ad, zaman, seviye) in enumerate(olaylar):
-            indeks = ses_indeksi + 1 + k
             girdiler += ["-i", str(efekt[ad].resolve())]
             ms = int(zaman * 1000)
-            filtreler.append(f"[{indeks}:a]adelay={ms}|{ms},volume={seviye}[e{k}]")
-            etiketler.append(f"[e{k}]")
-        filtreler.append(f"[{ses_indeksi}:a]{''.join(etiketler)}amix=inputs={len(olaylar) + 1}:"
+            filtreler.append(f"[{sonraki}:a]adelay={ms}|{ms},volume={seviye}[e{k}]")
+            karisim.append(f"[e{k}]")
+            sonraki += 1
+    if karisim:
+        filtreler.append(f"{konusma}{''.join(karisim)}amix=inputs={len(karisim) + 1}:"
                          f"duration=first:dropout_transition=0:normalize=0[ses]")
         ses_cikisi = "[ses]"
+    else:
+        ses_cikisi = f"{ses_indeksi}:a"
 
     komut = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *girdiler,
