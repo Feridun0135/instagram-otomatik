@@ -17,6 +17,8 @@ G, Y, FPS = ayarlar.VIDEO_GENISLIK, ayarlar.VIDEO_YUKSEKLIK, ayarlar.VIDEO_FPS
 
 SARI = "&H0000D7FF&"     # ASS renkleri BGR sırasındadır: altın sarısı
 BEYAZ = "&H00FFFFFF&"
+YESIL = "&H0032A02E&"    # artı (BGR)
+KIRMIZI = "&H002E2ED6&"  # eksi (BGR)
 GECISLER = ["fade", "slideleft", "smoothleft", "slideup", "smoothup", "circleopen"]
 
 
@@ -97,7 +99,8 @@ def not_zamanlari(notlar: list[dict], kelimeler: list[dict], toplam: float,
     for i, (bas, n) in enumerate(sirali):
         sonraki = sirali[i + 1][0] if i + 1 < len(sirali) else toplam - 0.5
         bitis = min(bas + 4.5, sonraki - 0.15, toplam - 0.3)
-        sonuc.append({"baslangic": bas, "bitis": bitis, "metin": n["metin"], "sira": len(sonuc) + 1})
+        sonuc.append({"baslangic": bas, "bitis": bitis, "metin": n["metin"], "sira": len(sonuc) + 1,
+                      "tur": n.get("tur")})
     return sonuc
 
 
@@ -105,12 +108,13 @@ def not_zamanlari(notlar: list[dict], kelimeler: list[dict], toplam: float,
 VITRIN_GORSEL = (600, 1150)   # ürün görselinin sığacağı alan (genişlik, yükseklik)
 VITRIN_OK_X = 600             # okun başladığı x
 VITRIN_LISTE_X = 700          # özellik yazılarının başladığı x
-VITRIN_Y = [600, 800, 1000, 1200]
+VITRIN_Y = [500, 680, 860, 1040]
 
 
 def vitrin_plani(kartlar: list[dict], toplam: float) -> dict | None:
     """Ürün özelliklerinin sırayla listeleneceği zaman aralığını çıkarır (en az 2 özellik gerekir)."""
-    maddeler = [{"baslangic": k["baslangic"], "metin": k["metin"]} for k in kartlar][:len(VITRIN_Y)]
+    maddeler = [{"baslangic": k["baslangic"], "metin": k["metin"], "tur": k.get("tur")}
+                for k in kartlar][:len(VITRIN_Y)]
     if len(maddeler) < 2:
         return None
     bas = max(maddeler[0]["baslangic"] - 0.3, 3.1)
@@ -141,7 +145,7 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
         # Kart etiketi: sarı zemin üzerinde siyah, küçük.
         f"Style: Etiket,{font},52,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,2,0,3,14,0,5,0,0,0,1",
         # Ürün vitrini: sağdaki özellik maddeleri ve başlık.
-        f"Style: Ozellik,{font},54,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,4,{VITRIN_LISTE_X},30,0,1",
+        f"Style: Ozellik,{font},50,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,4,{VITRIN_LISTE_X},30,0,1",
         f"Style: VitrinBaslik,{font},46,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,3,0,3,14,0,4,{VITRIN_LISTE_X},30,0,1",
         f"Style: Ok,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,4,0,0,0,1",
         f"Style: Cubuk,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
@@ -193,22 +197,28 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
     if vitrin:
         vb, vs = vitrin["baslangic"], vitrin["bitis"]
         cikis = int((vs - vb) * 1000)
+        eksi_var = any(m.get("tur") == "eksi" for m in vitrin["maddeler"])
+        baslik = "ARTI & EKSİ" if eksi_var else "ÖNE ÇIKANLAR"
         olay(2, vb, vs, "VitrinBaslik",
-             rf"{{\q2\pos({VITRIN_LISTE_X},{VITRIN_Y[0] - 140})\fscx40\fscy40\t(0,160,\fscx100\fscy100)"
-             rf"\t({cikis - 250},{cikis},\alpha&HFF&)}}ÖNE ÇIKANLAR")
+             rf"{{\q2\pos({VITRIN_LISTE_X},{VITRIN_Y[0] - 125})\fscx40\fscy40\t(0,160,\fscx100\fscy100)"
+             rf"\t({cikis - 250},{cikis},\alpha&HFF&)}}" + baslik)
         for i, madde in enumerate(vitrin["maddeler"]):
             mb = madde["baslangic"]
             y = VITRIN_Y[i]
             ms = int((vs - mb) * 1000)
             kaybol = rf"\t({ms - 250},{ms},\alpha&HFF&)"
+            tur = madde.get("tur")
+            renk = YESIL if tur == "arti" else KIRMIZI if tur == "eksi" else SARI
+            on_ek = "+ " if tur == "arti" else "- " if tur == "eksi" else ""
+            kutu = rf"\3c{renk}" if tur in ("arti", "eksi") else ""
             # Ok: soldan sağa doğru çizilir.
             olay(2, mb, vs, "Ok",
-                 rf"{{\pos({VITRIN_OK_X},{y})\fscx0\t(0,180,\fscx100){kaybol}\p1}}"
+                 rf"{{\pos({VITRIN_OK_X},{y})\c{renk}\fscx0\t(0,180,\fscx100){kaybol}\p1}}"
                  "m 0 -5 l 66 -5 l 66 -17 l 92 0 l 66 17 l 66 5 l 0 5{\\p0}")
             # Özellik yazısı: sağdan kayarak gelir, hafifçe büyüyüp yerine oturur.
             olay(2, mb + 0.12, vs, "Ozellik",
                  rf"{{\move({G + 40},{y},{VITRIN_LISTE_X},{y},0,220)\t(220,320,\fscx106\fscy106)"
-                 rf"\t(320,420,\fscx100\fscy100){kaybol}}}" + tr_buyuk(_temiz(madde["metin"])))
+                 rf"\t(320,420,\fscx100\fscy100){kutu}{kaybol}}}" + on_ek + tr_buyuk(_temiz(madde["metin"])))
 
     # İlerleme çubuğu: video boyunca soldan sağa dolar.
     olay(4, 0, toplam, "Cubuk",
@@ -245,6 +255,8 @@ def _efekt_dosyalari(klasor: Path) -> dict[str, Path]:
     tarifler = {
         # Kısa, aşağı doğru kayan "pop".
         "pop": ["-f", "lavfi", "-i", "aevalsrc=0.7*sin(2*PI*(1500-5200*t)*t)*exp(-26*t):s=44100:d=0.18"],
+        # Eksiler için daha pes bir "tık".
+        "pop_eksi": ["-f", "lavfi", "-i", "aevalsrc=0.7*sin(2*PI*(650-1800*t)*t)*exp(-22*t):s=44100:d=0.2"],
         # Yumuşak "whoosh": filtrelenmiş pembe gürültü.
         "whoosh": ["-f", "lavfi", "-i", "anoisesrc=d=0.45:c=pink:a=0.6:r=44100",
                    "-af", "bandpass=f=1800:width_type=h:w=1600,afade=t=in:d=0.2,afade=t=out:st=0.2:d=0.25"],
@@ -345,7 +357,8 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
         if klip_sure or resimler:
             olaylar += [("whoosh", max(i * L - 0.15, 0), 0.16) for i in range(1, n)]
         if vitrin:
-            olaylar += [("pop", m["baslangic"] + 0.12, 0.55) for m in vitrin["maddeler"]]
+            olaylar += [("pop_eksi" if m.get("tur") == "eksi" else "pop", m["baslangic"] + 0.12, 0.55)
+                        for m in vitrin["maddeler"]]
     ses_cikisi = f"{ses_indeksi}:a"
     if olaylar:
         efekt = _efekt_dosyalari(altyazi.parent)

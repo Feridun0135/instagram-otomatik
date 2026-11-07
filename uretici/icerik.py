@@ -41,7 +41,8 @@ def kategori_sec(gecmis: list[dict]) -> str:
 _ORTAK_KURALLAR = """Anlatıcı karakteri: samimi bir abi.
 - Küçük kardeşine ya da yakın arkadaşına anlatır gibi sıcak, rahat ve hafif esprili konuşur; abartmaz, bağırmaz.
 - "Bak şimdi", "açık konuşayım", "bence", "ben olsam" gibi doğal günlük ifadeleri yerinde ve az kullanır.
-- Ürünlerde net kişisel görüş verir: kime değer, kime değmez; artısını da eksisini de dürüstçe söyler.
+- Objektif bir teknoloji kanalıdır: reklam ya da övgü dili kullanmaz, ürünün artısını da eksisini de aynı açıklıkla söyler,
+  kime değer, kime değmez net söyler. Abartılı vaatlerde bulunmaz.
 - Kapanışı her zaman şu imza cümlesiyle yapar: "Takipte kal, yarın yine buradayım."
 - Yapay zekâ kalıpları YASAK: "dijital dünyada", "teknolojinin hızla geliştiği", "hayatınızı kolaylaştıracak",
   "unutmayın", "sonuç olarak", "heyecan verici", "devrim niteliğinde", "merhaba arkadaşlar".
@@ -50,7 +51,8 @@ Kurallar:
 - Seslendirme metni 60-90 kelime olsun (yaklaşık 25-35 saniye). Kısa, tempolu cümleler kur.
 - İlk cümle izleyiciyi durduracak güçlü bir kanca olsun (merak, şaşırtıcı bilgi veya doğrudan fayda).
 - Sade, samimi, günlük Türkçe kullan; "sen" diye hitap et.
-- Kesin olarak doğru olduğundan emin olmadığın bilgiyi yazma.
+- Kesin olarak doğru olduğundan emin olmadığın bilgiyi yazma; yaygın teknoloji efsanelerini doğruymuş gibi anlatma.
+- İpucu veya bilgi her cihazda/sürümde geçerli değilse bunu kısaca belirt.
 - Metinde emoji, madde işareti veya parantez kullanma (seslendirilecek).
 - Son cümle imza cümlesi olsun.
 
@@ -118,11 +120,18 @@ Haberler:
 Daha önce işlenen konular (TEKRARLAMA):
 {eskiler}
 
-Analiz şunları içersin: ürün ne, öne çıkan 3-4 özelliği (art arda, ayrı kısa cümlelerle), bir eksisi ya da
-dikkat edilecek nokta, kimler için mantıklı olduğu.
+Analiz OBJEKTİF olsun ve şu sırayla ilerlesin: ürün ne (tek cümle), 2 artısı, 2 eksisi, kime değer / kime değmez.
+Artılar ve eksiler dengeli olsun; eksileri yumuşatma, artıları abartma. Her artı ve eksiyi ayrı kısa bir cümleyle söyle.
 
-Bu videoda ekran_notlari ÜRÜNÜN ÖZELLİKLERİDİR: 3-4 madde, her biri en fazla 4 kelime (ör. "1,3 inç dokunmatik ekran"),
-metinde anlatıldıkları sırayla ve her birinin cumle_baslangici o özelliğin anlatıldığı cümlenin ilk 3 kelimesi olsun.
+Eksiler için doğruluk kuralı: eksi uydurma. Eksi olarak yalnızca şunları kullan:
+- haberde açıkça geçen bir dezavantaj (yüksek fiyat, eksik özellik, sınırlı satış bölgesi, abonelik şartı vb.),
+- haberden çıkan dürüst bir belirsizlik (ör. "fiyatı henüz açıklanmadı", "Türkiye'ye gelip gelmeyeceği belli değil",
+  "pil ömrü henüz bağımsız testlerle doğrulanmadı", "ilk nesil ürün, yazılım olgunlaşmamış olabilir").
+
+Bu videoda ekran_notlari ARTI ve EKSİLERDİR: tam 4 madde, önce 2 artı sonra 2 eksi, metinde söylendikleri sırayla.
+Her madde en fazla 4 kelime olsun (ör. "1,3 inç dokunmatik ekran", "Fiyatı henüz belli değil") ve ek olarak
+"tur" alanı taşısın: artılar için "arti", eksiler için "eksi". Örnek:
+{{"metin": "1,3 inç dokunmatik ekran", "cumle_baslangici": "metindeki cümlenin ilk 3 kelimesi", "tur": "arti"}}
 Ekranda ürün görselinin yanında oklarla sırayla listelenecekler.
 
 ÇOK ÖNEMLİ doğruluk kuralları:
