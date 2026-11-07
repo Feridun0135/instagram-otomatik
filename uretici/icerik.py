@@ -152,7 +152,7 @@ Ekranda ürün görselinin yanında oklarla sırayla listelenecekler.
 {_ORTAK_KURALLAR}
 
 Yalnızca şu JSON'u döndür:
-{_JSON_SEMASI.format(ek=',\n  "kaynak_no": seçtiğin haberin köşeli parantez içindeki numarası (sayı)')}"""
+{_JSON_SEMASI.format(ek=',  "kaynak_no": seçtiğin haberin köşeli parantez içindeki numarası (sayı)')}"""
 
 
 # Geçici yoğunluk / kota hatalarında beklenip tekrar denenir.
