@@ -80,7 +80,8 @@ def main() -> int:
         if ayarlar.MUZIK:
             from uretici import muzik
             muzik_dosyasi = muzik.muzik_hazirla(veri["kategori"], toplam, klasor / "muzik.wav")
-        video.ass_yaz(gruplar, veri["kanca"], kartlar, toplam, altyazi, vitrin=vitrin)
+        video.ass_yaz(gruplar, veri["kanca"], kartlar, toplam, altyazi, vitrin=vitrin,
+                      vurgular=veri.get("vurgular"))
         cikti = video.video_olustur(ses, klipler, altyazi, klasor / "video.mp4", resimler=urun_gorselleri,
                                     vitrin=vitrin, muzik=muzik_dosyasi)
 

@@ -80,6 +80,7 @@ _JSON_SEMASI = """{{
   "kanca": "ekranın üstünde ilk saniyelerde görünecek en fazla 6 kelimelik başlık",
   "metin": "seslendirilecek tam metin, düzgün yazım kurallarıyla (ekranda altyazı olarak görünecek)",
   "seslendirme_metni": "metin ile AYNI cümleler, aynı sırada ve aynı sayıda; ama konuşma dilinde yazılmış hali",
+  "vurgular": ["metinde birebir geçen, altyazıda renkli gösterilecek 5-8 önemli kelime (her cümleden en fazla 1-2)"],
   "aciklama": "kurallara uygun Instagram açıklaması (satır sonları \\n ile)",
   "etiketler": ["tam 5 etiket, # olmadan, boşluksuz"],
   "gorsel_aramalari": ["stok video aramak için 4 kısa, birbirinden farklı İngilizce arama ifadesi"],
@@ -105,6 +106,10 @@ Daha önce işlenen konular (bunları ve çok benzerlerini TEKRARLAMA):
 
 Yalnızca şu JSON'u döndür:
 {_JSON_SEMASI.format(ek="")}"""
+
+
+# f-string içinde ters bölü kullanılamadığı için (Python 3.11) ayrı tanımlanır.
+_KAYNAK_NO_ALANI = ',\n  "kaynak_no": seçtiğin haberin köşeli parantez içindeki numarası (sayı)'
 
 
 def _urun_istemi(haberler: list[dict], eski_konular: list[str], eski_linkler: set[str]) -> str:
@@ -152,7 +157,7 @@ Ekranda ürün görselinin yanında oklarla sırayla listelenecekler.
 {_ORTAK_KURALLAR}
 
 Yalnızca şu JSON'u döndür:
-{_JSON_SEMASI.format(ek=',  "kaynak_no": seçtiğin haberin köşeli parantez içindeki numarası (sayı)')}"""
+{_JSON_SEMASI.format(ek=_KAYNAK_NO_ALANI)}"""
 
 
 # Geçici yoğunluk / kota hatalarında beklenip tekrar denenir.

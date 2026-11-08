@@ -46,6 +46,12 @@ VIDEO_FPS = 30
 CEKIM_SURESI = float(os.getenv("CEKIM_SURESI", "2.2"))
 GECIS_SURESI = 0.3
 KLIP_SAYISI = int(os.getenv("KLIP_SAYISI", "6"))
+# Altyazı stili: "kutu" (beyaz yuvarlak kutuda cümle, önemli kelimeler renkli) veya "eski" (kelime kelime sarı vurgu).
+ALTYAZI_STILI = os.getenv("ALTYAZI_STILI", "kutu").strip().lower() or "kutu"
+# Videonun üstünde görünen hesap etiketi (boş bırakılırsa gösterilmez).
+HESAP_ETIKETI = os.getenv("HESAP_ETIKETI", "@feriduntalak").strip()
+# Stok görüntülere tutarlı, sıcak bir renk filtresi uygula (SICAK_FILTRE=0 kapatır).
+SICAK_FILTRE = os.getenv("SICAK_FILTRE", "1") != "0"
 # Arka plan müziği: MUZIK=0 kapatır; MUZIK_SEVIYE müziğin ses seviyesi (konuşma sırasında ayrıca kısılır).
 MUZIK = os.getenv("MUZIK", "1") != "0"
 MUZIK_SEVIYE = float(os.getenv("MUZIK_SEVIYE", "0.14"))

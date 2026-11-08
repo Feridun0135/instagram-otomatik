@@ -159,10 +159,91 @@ def vitrin_satirlari(vitrin: dict) -> list[dict]:
     return satirlar
 
 
+# ---------- kutulu cümle altyazısı ----------
+
+VURGU = "&H000C59E8&"   # turuncu (BGR); altyazıda önemli kelimeler
+KOYU = "&H00262626&"
+
+
+def _yazi_genisligi(metin: str, boyut: int) -> float:
+    """Kalın yazı tipinde yaklaşık piksel genişliği (kutuyu yazıya göre boyutlandırmak için)."""
+    g = 0.0
+    for ch in metin:
+        if ch == " ":
+            g += 0.28
+        elif ch in ".,:;!'|ıil":
+            g += 0.30
+        elif ch.isupper() or ch in "mwMW":
+            g += 0.70
+        elif ch.isdigit():
+            g += 0.56
+        else:
+            g += 0.55
+    return g * boyut
+
+
+def _yuvarlak_kutu(gen: float, yuk: float, r: float = 26) -> str:
+    """ASS çizim komutuyla köşeleri yuvarlatılmış dikdörtgen (sol üst köşe 0,0)."""
+    w, h = int(gen), int(yuk)
+    return (f"m {r} 0 l {w - r} 0 b {w} 0 {w} 0 {w} {r} l {w} {h - r} b {w} {h} {w} {h} {w - r} {h} "
+            f"l {r} {h} b 0 {h} 0 {h} 0 {h - r} l 0 {r} b 0 0 0 0 {r} 0")
+
+
+def _normal_kok(kelime: str) -> str:
+    return _normal(kelime)
+
+
+def _dengeli_bol(kelimeler: list[dict], parca_sayisi: int, boyut: int) -> list[list[dict]]:
+    """Kelimeleri genişliği birbirine yakın `parca_sayisi` parçaya böler (sırayı korur)."""
+    if parca_sayisi <= 1 or len(kelimeler) <= 1:
+        return [kelimeler]
+    genislikler = [_yazi_genisligi(k["metin"] + " ", boyut) for k in kelimeler]
+    hedef = sum(genislikler) / parca_sayisi
+    parcalar, mevcut, birikim = [], [], 0.0
+    for k, g in zip(kelimeler, genislikler):
+        kalan_parca = parca_sayisi - len(parcalar) - 1
+        if mevcut and birikim + g / 2 > hedef and kalan_parca > 0:
+            parcalar.append(mevcut)
+            mevcut, birikim = [], 0.0
+        mevcut.append(k)
+        birikim += g
+    parcalar.append(mevcut)
+    return parcalar
+
+
+def cumle_parcalari(kelimeler: list[dict], satir_px: int = 860, boyut: int = 50, en_fazla_satir: int = 2) -> list[dict]:
+    """Kelimeleri ekranda kutu içinde gösterilecek parçalara böler.
+
+    Her cümle, en fazla 2 satırlık ve birbirine yakın uzunlukta parçalara ayrılır; böylece tek kelimelik
+    "yetim" parçalar oluşmaz. Her parçanın satırları da dengeli bölünür.
+    """
+    import math
+
+    cumleler, mevcut = [], []
+    for k in kelimeler:
+        mevcut.append(k)
+        if k["metin"][-1:] in ".!?…":
+            cumleler.append(mevcut)
+            mevcut = []
+    if mevcut:
+        cumleler.append(mevcut)
+
+    sonuc = []
+    for cumle in cumleler:
+        toplam = _yazi_genisligi(" ".join(k["metin"] for k in cumle), boyut)
+        adet = max(1, math.ceil(toplam / (satir_px * en_fazla_satir * 0.92)))
+        for parca in _dengeli_bol(cumle, adet, boyut):
+            gen = _yazi_genisligi(" ".join(k["metin"] for k in parca), boyut)
+            satirlar = _dengeli_bol(parca, min(en_fazla_satir, math.ceil(gen / satir_px)), boyut)
+            sonuc.append({"satirlar": satirlar, "baslangic": parca[0]["baslangic"], "bitis": parca[-1]["bitis"]})
+    return sonuc
+
+
 # ---------- ASS yazı katmanı ----------
 
 def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: float,
-            yol: Path, kanca_suresi: float = 3.0, vitrin: dict | None = None) -> None:
+            yol: Path, kanca_suresi: float = 3.0, vitrin: dict | None = None,
+            vurgular: list[str] | None = None) -> None:
     font = ayarlar.ALTYAZI_FONT
     bicim = ("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, "
              "Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
@@ -174,7 +255,11 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
         # Altyazı: beyaz, kalın siyah kenarlı, alt-orta.
         f"Style: Altyazi,{font},92,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,8,3,2,70,70,600,1",
         # Açılış başlığı: sarı zemin üzerinde siyah.
-        f"Style: Kanca,{font},96,&H00000000,&H00000000,&H0000D7FF,&H0000D7FF,-1,0,0,0,100,100,0,0,3,26,0,8,90,90,260,1",
+        f"Style: Kanca,{font},96,&H00000000,&H00000000,&H0000D7FF,&H0000D7FF,-1,0,0,0,100,100,0,0,3,26,0,8,90,90,300,1",
+        # Kutulu cümle altyazısı ve kutusu, hesap etiketi.
+        f"Style: KutuYazi,{font},50,{KOYU[:-1]},{KOYU[:-1]},&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,5,0,0,0,1",
+        f"Style: Cizim,{font},20,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+        f"Style: Hesap,{font},30,{KOYU[:-1]},{KOYU[:-1]},&H00000000,&H00000000,-1,0,0,0,100,100,1,0,1,0,0,5,0,0,0,1",
         # Bilgi kartı: koyu zemin üzerinde beyaz.
         f"Style: Kart,{font},80,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,34,0,5,100,100,0,1",
         # Kart etiketi: sarı zemin üzerinde siyah, küçük.
@@ -197,22 +282,60 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
          r"{\fscx40\fscy40\t(0,180,\fscx108\fscy108)\t(180,280,\fscx100\fscy100)\fad(0,200)}"
          + tr_buyuk(_temiz(kanca)))
 
-    # Kelime kelime vurgulanan altyazı.
-    for gi, grup in enumerate(gruplar):
-        grup_sonu = grup[-1]["bitis"]
-        if gi + 1 < len(gruplar) and gruplar[gi + 1][0]["baslangic"] - grup_sonu < 0.4:
-            grup_sonu = gruplar[gi + 1][0]["baslangic"]  # gruplar arasında titreme olmasın
-        for wi, kelime in enumerate(grup):
-            bas = kelime["baslangic"]
-            bit = grup[wi + 1]["baslangic"] if wi + 1 < len(grup) else grup_sonu
+    if ayarlar.ALTYAZI_STILI == "kutu":
+        # Hesap etiketi: üstte küçük, yarı saydam beyaz kapsül.
+        if ayarlar.HESAP_ETIKETI:
+            hg = _yazi_genisligi(ayarlar.HESAP_ETIKETI, 30) + 44
+            olay(4, 0, toplam, "Cizim",
+                 rf"{{\pos({int((G - hg) / 2)},{150 - 27})\1a&H40&\p1}}{_yuvarlak_kutu(hg, 54, 27)}{{\p0}}")
+            olay(5, 0, toplam, "Hesap", rf"{{\pos({G // 2},150)}}" + _temiz(ayarlar.HESAP_ETIKETI))
+
+        # Kutulu cümle altyazısı: beyaz yuvarlak kutu, koyu yazı, önemli kelimeler turuncu.
+        vurgu_kokleri = {_normal(w) for v in (vurgular or []) for w in str(v).split() if _normal(w)}
+        kelimeler = [k for grup in gruplar for k in grup]
+        parcalar = cumle_parcalari(kelimeler)
+        y_merkez = 1500
+        for pi, parca in enumerate(parcalar):
+            bas = parca["baslangic"]
+            bit = parcalar[pi + 1]["baslangic"] if pi + 1 < len(parcalar) else parca["bitis"] + 0.4
+            if bit - parca["bitis"] > 0.8:
+                bit = parca["bitis"] + 0.5
             if bit <= bas:
                 continue
-            parcalar = []
-            for wj, k in enumerate(grup):
-                yazi = tr_buyuk(_temiz(k["metin"]))
-                parcalar.append(f"{{\\c{SARI}}}{yazi}{{\\c{BEYAZ}}}" if wj == wi else yazi)
-            pop = r"{\fscx70\fscy70\t(0,90,\fscx100\fscy100)}" if wi == 0 else ""
-            olay(0, bas, bit, "Altyazi", pop + " ".join(parcalar))
+            satir_metinleri, en_genis = [], 0.0
+            for satir in parca["satirlar"]:
+                en_genis = max(en_genis, _yazi_genisligi(" ".join(k["metin"] for k in satir), 50))
+                kelimeler_yazi = []
+                for k in satir:
+                    yazi = _temiz(k["metin"])
+                    if _normal(k["metin"]) in vurgu_kokleri:
+                        yazi = f"{{\\c{VURGU}}}{yazi}{{\\c{KOYU}}}"
+                    kelimeler_yazi.append(yazi)
+                satir_metinleri.append(" ".join(kelimeler_yazi))
+            kg = min(en_genis + 72, G - 60)
+            ky_ = 50 * 1.22 * len(satir_metinleri) + 44
+            olay(0, bas, bit, "Cizim",
+                 rf"{{\pos({int((G - kg) / 2)},{int(y_merkez - ky_ / 2)})\1a&H08&\fad(90,60)\p1}}"
+                 + _yuvarlak_kutu(kg, ky_) + "{\\p0}")
+            olay(1, bas, bit, "KutuYazi",
+                 rf"{{\q2\pos({G // 2},{y_merkez})\fad(90,60)}}" + "\\N".join(satir_metinleri))
+    else:
+        for gi, grup in enumerate(gruplar):
+            grup_sonu = grup[-1]["bitis"]
+            if gi + 1 < len(gruplar) and gruplar[gi + 1][0]["baslangic"] - grup_sonu < 0.4:
+                grup_sonu = gruplar[gi + 1][0]["baslangic"]  # gruplar arasında titreme olmasın
+            for wi, kelime in enumerate(grup):
+                bas = kelime["baslangic"]
+                bit = grup[wi + 1]["baslangic"] if wi + 1 < len(grup) else grup_sonu
+                if bit <= bas:
+                    continue
+                parcalar = []
+                for wj, k in enumerate(grup):
+                    yazi = tr_buyuk(_temiz(k["metin"]))
+                    parcalar.append(f"{{\\c{SARI}}}{yazi}{{\\c{BEYAZ}}}" if wj == wi else yazi)
+                pop = r"{\fscx70\fscy70\t(0,90,\fscx100\fscy100)}" if wi == 0 else ""
+                olay(0, bas, bit, "Altyazi", pop + " ".join(parcalar))
+
 
     # Bilgi kartları: soldan kayarak gelir, sağa kayarak çıkar.
     ky = 560
@@ -369,7 +492,9 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
                     f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},"
                     f"scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
                     f"scale=w='trunc({G}*{z}/2)*2':h=-2:eval=frame,crop={G}:{Y},"
-                    f"setsar=1,format=yuv420p,settb=AVTB[c{i}]"
+                    + ("colorbalance=rs=0.07:gs=0.02:bs=-0.08:rm=0.05:gm=0.01:bm=-0.06,eq=saturation=1.05,"
+                       if ayarlar.SICAK_FILTRE else "")
+                    + f"setsar=1,format=yuv420p,settb=AVTB[c{i}]"
                 )
         onceki = "c0"
         for i in range(1, n):
