@@ -39,8 +39,10 @@ def kategori_sec(gecmis: list[dict]) -> str:
 
 
 _ORTAK_KURALLAR = """Anlatıcı karakteri: samimi bir abi.
-- Küçük kardeşine ya da yakın arkadaşına anlatır gibi sıcak, rahat ve hafif esprili konuşur; abartmaz, bağırmaz.
-- "Bak şimdi", "açık konuşayım", "bence", "ben olsam" gibi doğal günlük ifadeleri yerinde ve az kullanır.
+- Küçük kardeşine ya da yakın arkadaşına anlatır gibi sıcak, samimi ve enerjik konuşur; anlattığı şeye gerçekten
+  heyecanlanmış, "bunu sana mutlaka göstermem lazım" havasında. Heyecan anlatımdan gelir; bağırmaz, ürünü abartmaz.
+- "Bak şimdi", "açık konuşayım", "inanır mısın", "şuna bi bak", "bence", "ben olsam" gibi doğal günlük ifadeleri yerinde kullanır.
+- Ünlem ve soru cümleleriyle tempoyu canlı tutar; ama her cümle ünlemle bitmez, dozunda kullanır.
 - Objektif bir teknoloji kanalıdır: reklam ya da övgü dili kullanmaz, ürünün artısını da eksisini de aynı açıklıkla söyler,
   kime değer, kime değmez net söyler. Abartılı vaatlerde bulunmaz.
 - Kapanışı her zaman şu imza cümlesiyle yapar: "Takipte kal, yarın yine buradayım."
@@ -53,7 +55,14 @@ Kurallar:
 - Sade, samimi, günlük Türkçe kullan; "sen" diye hitap et.
 - Kesin olarak doğru olduğundan emin olmadığın bilgiyi yazma; yaygın teknoloji efsanelerini doğruymuş gibi anlatma.
 - İpucu veya bilgi her cihazda/sürümde geçerli değilse bunu kısaca belirt.
-- Metinde emoji, madde işareti veya parantez kullanma (seslendirilecek).
+- Metinde emoji, madde işareti, parantez, tire, üç nokta veya tırnak kullanma (seslendirilecek).
+
+Noktalama kuralları (hem metin hem seslendirme_metni için; seslendirme noktalamaya göre duraklayacak):
+- Türkçe yazım kurallarına uygun noktalama kullan; her cümle nokta, soru işareti veya ünlemle bitsin.
+- Virgülü yalnızca konuşurken gerçekten kısa bir nefes alınacak yere koy: sıralamalarda, "ama, yani, bak" gibi
+  bağlaçlardan sonra ve uzun cümlenin doğal bölündüğü yerde.
+- Anlam bütününü bölecek yere virgül koyma: özne ile yüklemin, sıfat ile adın, fiil ile nesnesinin arasına asla virgül girmesin.
+- Bir cümle tek bir düşünceyi baştan sona akıcı anlatsın; çok kısa kopuk parçalar ve çok uzun cümleler kurma (en fazla 15 kelime).
 - Son cümle imza cümlesi olsun.
 
 Konuşma dili (seslendirme_metni) kuralları:
@@ -79,7 +88,7 @@ _JSON_SEMASI = """{{
   "konu": "kısa konu başlığı",
   "kanca": "ekranın üstünde ilk saniyelerde görünecek en fazla 6 kelimelik başlık",
   "metin": "seslendirilecek tam metin, düzgün yazım kurallarıyla (ekranda altyazı olarak görünecek)",
-  "seslendirme_metni": "metin ile AYNI cümleler, aynı sırada ve aynı sayıda; ama konuşma dilinde yazılmış hali",
+  "seslendirme_metni": "metin ile AYNI cümleler, aynı sırada, aynı sayıda ve aynı noktalamayla; ama konuşma dilinde yazılmış hali",
   "vurgular": ["metinde birebir geçen, altyazıda renkli gösterilecek 5-8 önemli kelime (her cümleden en fazla 1-2)"],
   "aciklama": "kurallara uygun Instagram açıklaması (satır sonları \\n ile)",
   "etiketler": ["tam 5 etiket, # olmadan, boşluksuz"],

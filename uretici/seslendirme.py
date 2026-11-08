@@ -1,11 +1,35 @@
 """Metni edge-tts ile Türkçe seslendirir ve altyazı zamanlamalarını çıkarır."""
 import asyncio
+import re
 from pathlib import Path
 
 from . import ayarlar
 
 # edge-tts zamanları 100 nanosaniye birimiyle verir.
 _BIRIM = 10_000_000
+
+
+def noktalamayi_duzelt(metin: str) -> str:
+    """Seslendirmede anlamsız duraklamaya yol açan işaretleri temizler, noktalamayı düzenler.
+
+    Tire ve üç nokta virgül/noktaya çevrilir; parantez, tırnak ve emoji kaldırılır; çift işaretler sadeleşir;
+    son cümle noktalamasız kaldıysa nokta eklenir.
+    """
+    m = metin.strip()
+    m = re.sub(r"[\u2600-\u27BF\U0001F000-\U0001FAFF\uFE0F\u200d]", "", m)       # emoji
+    m = re.sub(r"[()\[\]{}\"“”«»*_#]", "", m)
+    m = re.sub(r"\s*(\.{3}|…)\s*(?=\S)", ". ", m)                                 # üç nokta -> cümle sonu
+    m = re.sub(r"(\.{3}|…)\s*$", ".", m)
+    m = re.sub(r"\s+[-–—]+\s+|[–—]", ", ", m)                                       # tire -> kısa es
+    m = re.sub(r"\s+([,.!?;:])", r"\1", m)                                          # işaretten önce boşluk olmaz
+    m = re.sub(r",\s*([.!?])", r"\1", m)                                            # ", ." -> "."
+    m = re.sub(r"([,;:])(?:\s*[,;:])+", r"\1", m)                                   # ",," -> ","
+    m = re.sub(r"([.!?])\1+", r"\1", m)                                             # "!!" -> "!"
+    m = re.sub(r"([,.!?;:])(?=[^\s\d,.!?;:])", r"\1 ", m)                          # işaretten sonra boşluk
+    m = re.sub(r"\s{2,}", " ", m).strip(" ,;:")
+    if m and m[-1] not in ".!?":
+        m += "."
+    return m
 
 
 async def _seslendir(metin: str, ses_yolu: Path) -> list[dict]:

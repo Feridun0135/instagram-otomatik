@@ -33,6 +33,61 @@ def _cumlelere_bol(metin: str) -> list[str]:
     return [p.strip() for p in parcalar if p.strip()]
 
 
+# Duraklama düzeni (saniye): virgülde çok kısa bir es, cümle sonunda biraz daha uzun.
+VIRGUL_ESI = float(os.getenv("KLON_VIRGUL_ESI", "0.14"))
+CUMLE_ESI = float(os.getenv("KLON_CUMLE_ESI", "0.24"))
+_KENAR = 0.03          # kelimenin başı/sonu kesilmesin diye bırakılan pay
+_PENCERE = 0.01        # sessizlik ölçüm penceresi
+
+
+def _sessizlikleri_duzenle(x: np.ndarray, sr: int, virgul_sayisi: int) -> np.ndarray:
+    """Cümle içi duraklamaları noktalamaya göre düzenler.
+
+    Baştaki/sondaki sessizlik kırpılır. Cümle içindeki duraklamalardan en uzun `virgul_sayisi` tanesi
+    virgül esi kabul edilip VIRGUL_ESI uzunluğuna getirilir; geri kalan (anlamsız) duraklamalar
+    akışı bozmayacak kadar kısaltılır. Böylece model virgül olmayan yerde durursa cümle kopmaz.
+    """
+    p = max(1, int(_PENCERE * sr))
+    n = len(x) // p
+    if n < 3:
+        return x
+    enerji = np.sqrt(np.mean(x[: n * p].reshape(n, p) ** 2, axis=1))
+    esik = max(np.max(enerji) * 0.03, 1e-4)
+    sesli = enerji > esik
+    if not sesli.any():
+        return x
+    ilk, son = int(np.argmax(sesli)), int(n - np.argmax(sesli[::-1]))
+    kenar = int(_KENAR / _PENCERE)
+    bas, bit = max(0, ilk - kenar) * p, min(len(x), (son + kenar) * p)
+
+    # Cümle içindeki sessiz bölgeler (pencere indeksleriyle).
+    bolgeler, i = [], ilk
+    while i < son:
+        if not sesli[i]:
+            j = i
+            while j < son and not sesli[j]:
+                j += 1
+            bolgeler.append((i, j))
+            i = j
+        else:
+            i += 1
+    en_kisa = int(0.06 / _PENCERE)                              # kelime içi doğal boşluklara dokunma
+    adaylar = sorted((b for b in bolgeler if b[1] - b[0] > en_kisa), key=lambda b: b[0] - b[1])
+    virgul = set(adaylar[:virgul_sayisi])
+    parcalar, imlec = [], bas
+    for b0, b1 in sorted(adaylar):
+        hedef = VIRGUL_ESI if (b0, b1) in virgul else 0.06
+        uzunluk = (b1 - b0) * p
+        istenen = int(hedef * sr)
+        if uzunluk <= istenen:
+            continue
+        # Sessizliğin yalnızca istenen kadarını bırak (yarısı başta, yarısı sonda).
+        parcalar.append(x[imlec: b0 * p + istenen // 2])
+        imlec = b1 * p - (istenen - istenen // 2)
+    parcalar.append(x[imlec:bit])
+    return np.concatenate(parcalar)
+
+
 def seslendir(metin: str, ses_yolu: Path) -> list[dict]:
     """Metni kullanıcının sesiyle seslendirir; cümle zamanlamalarını döndürür."""
     import torch
@@ -45,15 +100,16 @@ def seslendir(metin: str, ses_yolu: Path) -> list[dict]:
         print("    Kendi sesin için model yükleniyor (ilk seferde birkaç dakika sürebilir)...")
         model = ChatterboxMultilingualTTS.from_pretrained(device="cpu")
         sr = model.sr
-        bosluk = np.zeros(int(0.12 * sr), dtype=np.float32)
+        bosluk = np.zeros(int(CUMLE_ESI * sr), dtype=np.float32)
 
         parcalar, bolumler, t = [], [], 0.0
         for cumle in _cumlelere_bol(metin):
             with torch.inference_mode():
                 wav = model.generate(cumle, language_id="tr", audio_prompt_path=str(ornek),
-                                     exaggeration=float(os.getenv("KLON_COSKU", "0.55")),
-                                     cfg_weight=float(os.getenv("KLON_CFG", "0.5")))
+                                     exaggeration=float(os.getenv("KLON_COSKU", "0.65")),
+                                     cfg_weight=float(os.getenv("KLON_CFG", "0.4")))
             x = wav.squeeze().detach().cpu().numpy().astype(np.float32)
+            x = _sessizlikleri_duzenle(x, sr, cumle.count(",") + cumle.count(";") + cumle.count(":"))
             sure = len(x) / sr
             bolumler.append({"baslangic": t, "bitis": t + sure, "metin": cumle})
             parcalar += [x, bosluk]
