@@ -67,8 +67,10 @@ Noktalama kuralları (hem metin hem seslendirme_metni için; seslendirme noktala
 
 Konuşma dili (seslendirme_metni) kuralları:
 - Bir dublaj sanatçısının doğal konuştuğu gibi, günlük konuşma Türkçesiyle yaz; okunduğu gibi seslendirilecek.
-- Gelecek zaman ve benzeri ekleri konuşulduğu gibi yaz: yapacağım -> yapıcam, olacak -> olucak, gelecek -> gelicek,
-  göreceksin -> görceksin, söyleyeceğim -> söylicem, edeceğiz -> edicez, anlatacağım -> anlatıcam.
+- Gelecek zaman eklerini İSTİSNASIZ her fiilde konuşulduğu gibi yaz: gideceğim -> gidicem, yapacağım -> yapıcam,
+  olacak -> olucak, gelecek -> gelicek, göreceksin -> görüceksin, söyleyeceğim -> söylicem, edeceğiz -> edicez,
+  anlatacağım -> anlatıcam, başlayacak -> başlıcak.
+- "değil" kelimesini her zaman "diil" yaz (değilim -> diilim, değildi -> diildi).
 - "bir" belirsizlik anlamındaysa "bi" yaz (bir şey -> bi şey, bir de -> bi de); sayı anlamındaysa "bir" kalsın.
 - Abartma: "yapıyorum" gibi zaten doğal olan kelimeleri bozma, argo ve yazım hatası ekleme, anlaşılırlığı koru.
 - Rakamları ve kısaltmaları okunacağı gibi yaz (ör. "1,3 inç" -> "bir virgül üç inç", "GB" -> "gigabayt").

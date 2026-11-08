@@ -32,6 +32,55 @@ def noktalamayi_duzelt(metin: str) -> str:
     return m
 
 
+_UNLULER = "aeıioöuüAEIİOÖUÜ"
+_DAR = {"a": "ı", "ı": "ı", "e": "i", "i": "i", "o": "u", "u": "u", "ö": "ü", "ü": "ü"}
+_KUCUK = str.maketrans("AEIİOÖUÜ", "aeıioöuü")
+# kök + (y) + acak/ecek/acağ/eceğ + ekler  (ör. yap|acağ|ım, söyle|y|ecek, ol|acak|sın)
+_GELECEK = re.compile(r"^(?P<kok>[^\W\d_]*?)(?P<y>y?)(?P<un>[aeAE])(?P<c>[cC])(?P<un2>[aeAE])(?P<k>[kğKĞ])(?P<ek>[^\W\d_]*)$")
+
+
+def _gelecek_zamani_konus(kelime: str) -> str:
+    """yapacağım -> yapıcam, gideceğim -> gidicem, olacak -> olucak, söyleyeceğim -> söylicem, başlayacak -> başlıcak."""
+    m = _GELECEK.match(kelime)
+    if not m:
+        return kelime
+    kok, y, ek = m["kok"], m["y"], m["ek"]
+    unluler = [h for h in kok if h in _UNLULER]
+    if not unluler or len(kok) < 2:
+        return kelime                       # "bacak", "acak" gibi fiil olmayan kelimeler
+    son_unlu = unluler[-1].translate(_KUCUK)
+    if y:                                   # ünlüyle biten kök: başla-y-acak -> başlı-cak
+        if kok[-1] not in _UNLULER:
+            return kelime
+        govde = kok[:-1] + _DAR[kok[-1].translate(_KUCUK)]
+    else:                                   # ünsüzle biten kök: yap-acak -> yapı-cak
+        if kok[-1] in _UNLULER:
+            return kelime
+        govde = kok + _DAR[son_unlu]
+    kuyruk = (m["c"] + m["un2"] + m["k"] + ek).lower()
+    # -acağım -> -cam, -acağız -> -caz (ve kalın/ince karşılıkları)
+    for uzun, kisa in (("cağım", "cam"), ("ceğim", "cem"), ("cağız", "caz"), ("ceğiz", "cez")):
+        if kuyruk.startswith(uzun):
+            kuyruk = kisa + kuyruk[len(uzun):]
+            break
+    return govde + kuyruk
+
+
+def konusma_diline_cevir(metin: str) -> str:
+    """Seslendirme metnini konuşulduğu gibi yazar (yazım kuralına göre değil).
+
+    Gelecek zaman: yapacağım -> yapıcam, gideceğim -> gidicem, olacak -> olucak.
+    değil -> diil (değilim -> diilim, değildi -> diildi).
+    Kelime sayısı değişmez; altyazı eşleşmesi bozulmaz.
+    """
+    def cevir(m: re.Match) -> str:
+        k = m.group(0)
+        if k[:5] in ("değil", "Değil", "DEĞİL"):
+            return ("D" if k[0] == "D" else "d") + "iil" + k[5:].lower()
+        return _gelecek_zamani_konus(k)
+    return re.sub(r"[^\W\d_]+", cevir, metin)
+
+
 async def _seslendir(metin: str, ses_yolu: Path) -> list[dict]:
     import edge_tts
 
