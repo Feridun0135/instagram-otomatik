@@ -55,7 +55,8 @@ def main() -> int:
 
         print("2/4 Seslendiriliyor...")
         ses = klasor / "ses.mp3"
-        konusma = seslendirme.konusma_diline_cevir(seslendirme.noktalamayi_duzelt(veri.get("seslendirme_metni") or veri["metin"]))
+        konusma = seslendirme.konusma_diline_cevir(seslendirme.ingilizce_okunus(
+            seslendirme.noktalamayi_duzelt(veri.get("seslendirme_metni") or veri["metin"])))
         bolumler = seslendirme.seslendir(konusma, ses)
         kelimeler = seslendirme.yaziya_esle(seslendirme.kelimelere_bol(bolumler), konusma,
                                             seslendirme.noktalamayi_duzelt(veri["metin"]))
@@ -66,7 +67,8 @@ def main() -> int:
         if veri.get("kaynak_link"):
             from uretici import haberler
             urun_gorselleri = haberler.urun_gorsellerini_indir(
-                {"link": veri["kaynak_link"], "gorseller": veri.get("kaynak_gorselleri", [])},
+                {"link": veri["kaynak_link"], "gorseller": veri.get("kaynak_gorselleri", []),
+                 "baslik": veri.get("kaynak_baslik", ""), "konu": veri.get("konu", "")},
                 klasor / "urun_gorselleri")
             veri["urun_gorseli_var"] = bool(urun_gorselleri)
         klipler = gorseller.videolari_indir(veri["gorsel_aramalari"], klasor / "klipler",

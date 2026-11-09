@@ -457,6 +457,9 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
                 if i * L + L + XF > vitrin["baslangic"] and i * L < vitrin["bitis"]:
                     sira[i] = ("vitrin", (vitrin_sayac // 2) % len(resimler))
                     vitrin_sayac += 1
+        if resimler and sira and sira[-1][0] != "vitrin":
+            # Kapanış her zaman ürünün ana görseliyle (haberin kapak görseli) bitsin.
+            sira[-1] = ("resim", 0)
         for i, (tur, j) in enumerate(sira):
             yakin = "(1+0.10*t/{d})" if i % 2 == 0 else "(1.10-0.10*t/{d})"  # yakınlaş / uzaklaş
             z = yakin.format(d=d)

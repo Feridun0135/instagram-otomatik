@@ -66,6 +66,42 @@ def _gelecek_zamani_konus(kelime: str) -> str:
     return govde + kuyruk
 
 
+# İngilizce kelime ve markaların İngilizce okunuşu, Türkçe harflerle (Türkçe ses modeli böylece İngilizce aksanla okur).
+# Türkçede zaten yazıldığı gibi okunanlar (Samsung, Android, Instagram, Tesla...) listede yoktur.
+INGILIZCE_OKUNUS = {
+    "iphone": "ayfon", "ipad": "aypad", "airpods": "erpods", "airtag": "ertag", "macbook": "mekbuk",
+    "imac": "aymek", "mac": "mek", "apple": "epıl", "watch": "voç", "vision": "vijın", "magsafe": "megseyf",
+    "google": "gugıl", "pixel": "piksıl", "gemini": "cemini", "youtube": "yutub", "chrome": "krom",
+    "galaxy": "gelaksi", "buds": "badz", "microsoft": "maykrosoft", "windows": "vindovs", "xbox": "ekboks",
+    "copilot": "kopaylıt", "surface": "sörfıs", "outlook": "autluk", "playstation": "pleysteyşın",
+    "switch": "sviç", "whatsapp": "vatsap", "facebook": "feysbuk", "threads": "tredz", "netflix": "netfliks",
+    "spotify": "spotifay", "kindle": "kindıl", "bluetooth": "bılutut", "wifi": "vayfay", "wi-fi": "vayfay",
+    "chatgpt": "çetcipiti", "openai": "opınay", "nothing": "nating", "phone": "fon", "oneplus": "vanplas",
+    "xiaomi": "şaomi", "huawei": "huavey", "realme": "rilmi", "nvidia": "envidia", "geforce": "ciforz",
+    "ryzen": "rayzın", "snapdragon": "snepdragın", "qualcomm": "kualkom", "dolby": "dolbi", "max": "meks",
+    "plus": "plas", "air": "er", "lite": "layt", "edge": "ec", "note": "nout", "home": "houm", "touch": "taç",
+    "face": "feys", "steam": "stim", "deck": "dek", "quest": "kuest", "laptop": "leptop", "gaming": "geyming",
+    "cloud": "klaud", "update": "apdeyt", "smartwatch": "smartvoç", "headphones": "hedfons",
+}
+
+
+def ingilizce_okunus(metin: str) -> str:
+    """Seslendirme metnindeki bilinen İngilizce kelimeleri okunuşlarıyla yazar (iPhone'un -> ayfon'un).
+
+    Kelime sayısı değişmez; ekrandaki altyazı orijinal yazımla kalır.
+    """
+    def cevir(m: re.Match) -> str:
+        k = m.group(0)
+        yeni = INGILIZCE_OKUNUS.get(k.lower())
+        if not yeni:
+            return k
+        return yeni[0].upper() + yeni[1:] if k[0].isupper() and m.start() == 0 else yeni
+
+    metin = re.sub(r"(?<![^\s(\"'])[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z]+)?", cevir, metin)
+    # Cümle başındaki kelime küçük harfe döndüyse büyüt.
+    return re.sub(r"(^|[.!?]\s+)([a-zçğıöşü])", lambda m: m.group(1) + m.group(2).upper(), metin)
+
+
 def konusma_diline_cevir(metin: str) -> str:
     """Seslendirme metnini konuşulduğu gibi yazar (yazım kuralına göre değil).
 

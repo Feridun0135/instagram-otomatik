@@ -71,6 +71,10 @@ Konuşma dili (seslendirme_metni) kuralları:
   olacak -> olucak, gelecek -> gelicek, göreceksin -> görüceksin, söyleyeceğim -> söylicem, edeceğiz -> edicez,
   anlatacağım -> anlatıcam, başlayacak -> başlıcak.
 - "değil" kelimesini her zaman "diil" yaz (değilim -> diilim, değildi -> diildi).
+- İngilizce kelime ve marka adlarını İngilizce okunuşuyla, Türkçe harflerle ve TEK kelime olarak yaz ki İngilizce aksanla
+  okunsun: iPhone -> ayfon, AirPods -> erpods, MacBook -> mekbuk, Google -> gugıl, YouTube -> yutub, Windows -> vindovs,
+  WhatsApp -> vatsap, Galaxy -> gelaksi, Nothing -> nating, Bluetooth -> bılutut. Ek gelirse kesme işaretinden sonra ekle
+  (ayfon'un). Ekrandaki metin (metin alanı) orijinal yazımla kalır.
 - "bir" belirsizlik anlamındaysa "bi" yaz (bir şey -> bi şey, bir de -> bi de); sayı anlamındaysa "bir" kalsın.
 - Abartma: "yapıyorum" gibi zaten doğal olan kelimeleri bozma, argo ve yazım hatası ekleme, anlaşılırlığı koru.
 - Rakamları ve kısaltmaları okunacağı gibi yaz (ör. "1,3 inç" -> "bir virgül üç inç", "GB" -> "gigabayt").
@@ -146,6 +150,8 @@ Daha önce işlenen konular (TEKRARLAMA):
 {eskiler}
 
 Analiz OBJEKTİF olsun ve şu sırayla ilerlesin: ürün ne (tek cümle), 2 artısı, 2 eksisi, kime değer / kime değmez.
+Ürünün adını ve model numarasını seçtiğin haberin başlığında ve özetinde geçtiği gibi BİREBİR kullan; model numarası uydurma
+veya değiştirme (haber "AirPods 4" diyorsa "AirPods 5" yazma).
 Artılar ve eksiler dengeli olsun; eksileri yumuşatma, artıları abartma. Her artı ve eksiyi ayrı kısa bir cümleyle söyle.
 Eksilere geçerken bunu sesli olarak da belirt (ör. "Gelelim eksilere", "Şimdi işin öbür tarafı"); ekranda o an EKSİLER başlığı çıkacak.
 
@@ -237,6 +243,7 @@ def icerik_uret() -> dict:
                 icerik["kaynak_adi"] = secilen["kaynak"]
                 icerik["kaynak_link"] = secilen["link"]
                 icerik["kaynak_gorselleri"] = secilen.get("gorseller", [])
+                icerik["kaynak_baslik"] = secilen.get("baslik", "")
             except (TypeError, ValueError, IndexError):
                 pass
             icerik["kategori"] = kategori

@@ -120,17 +120,60 @@ def son_haberler(gun: int = 4, en_fazla: int = 40) -> list[dict]:
 
 # ---------- seçilen haberin ürün görselleri ----------
 
+_IMG_ETIKETI = re.compile(r"<img\b[^>]*>", re.I)
+_ALT_RE = re.compile(r"""\b(?:alt|title)=["']([^"']*)["']""", re.I)
+# Haber metninin bittiği yerler: buradan sonraki görseller başka haberlere, yazara, reklama aittir.
+_GOVDE_SONU = re.compile(
+    r"</article>|<aside\b|<footer\b|<section[^>]*(?:related|ilgili|benzer|comment|yorum|recommend|onerilen)"
+    r"|<div[^>]*class=[\"'][^\"']*(?:related|ilgili|benzer|comment|yorum|recommend|onerilen|author|yazar|share|tags)",
+    re.I)
+_GENEL_KELIMELER = set("""yeni tanıtıldı tanitildi duyuruldu işte iste özellikleri ozellikleri fiyatı fiyati fiyat çıktı cikti
+geliyor geldi resmi resmen satışa satisa sunuldu türkiye turkiye ile için icin ve the new with and for from announced
+launch launches review hands price specs features its are has now officially analiz incelemesi inceleme""".split())
+
+
+def _anahtar_kelimeler(*metinler: str) -> set[str]:
+    """Ürünü tanımlayan kelimeler (ör. "AirPods 4 tanıtıldı" -> {"airpods"})."""
+    kelimeler = set()
+    for metin in metinler:
+        for k in re.findall(r"[^\W_]+", (metin or "").lower()):
+            if len(k) >= 3 and not k.isdigit() and k not in _GENEL_KELIMELER:
+                kelimeler.add(k)
+    return kelimeler
+
+
+def _ilgili_mi(etiket: str, adres: str, anahtarlar: set[str]) -> bool:
+    """Sayfa içi görselin dosya adı veya açıklaması ürünle ilgili mi?"""
+    if not anahtarlar:
+        return False
+    alt = " ".join(_ALT_RE.findall(etiket)).lower()
+    dosya = adres.rsplit("/", 1)[-1].lower()
+    return any(k in alt or k in dosya for k in anahtarlar)
+
+
 def _gorsel_adresleri(haber: dict) -> list[str]:
-    """Önce haber sayfasının ana görseli (og:image), sonra RSS ve sayfa içi görseller."""
+    """Ürünün görsel adresleri, güvenilirlik sırasıyla.
+
+    1) Haber sayfasının ana görseli (og:image) ve RSS'teki haber görseli: her zaman alınır.
+    2) Haber metnindeki diğer görseller: yalnızca metin bitmeden önce geçiyorsa VE dosya adı ya da açıklaması
+       ürün adını içeriyorsa alınır. "İlgili haberler", yazar, reklam gibi alanlardaki görseller alınmaz.
+    """
     adresler: list[str] = []
+    anahtarlar = _anahtar_kelimeler(haber.get("baslik", ""), haber.get("konu", ""))
+    sayfa = ""
     try:
         sayfa = requests.get(haber["link"], headers=_BASLIK, timeout=30).text
         adresler += _META_RE.findall(sayfa) + _META_RE2.findall(sayfa)
-        govde = sayfa.split("<article", 1)[1] if "<article" in sayfa else sayfa
-        adresler += _IMG_RE.findall(govde)
     except requests.RequestException as hata:
         print(f"    Uyarı: haber sayfası okunamadı ({type(hata).__name__})")
-    adresler += haber.get("gorseller", [])
+    adresler += haber.get("gorseller", [])[:1]
+    if sayfa:
+        govde = sayfa.split("<article", 1)[1] if "<article" in sayfa else sayfa
+        govde = _GOVDE_SONU.split(govde, 1)[0]
+        for etiket in _IMG_ETIKETI.findall(govde):
+            bulunan = _IMG_RE.findall(etiket)
+            if bulunan and _ilgili_mi(etiket, bulunan[0], anahtarlar):
+                adresler.append(bulunan[0])
 
     sonuc, gorulen = [], set()
     for a in adresler:
