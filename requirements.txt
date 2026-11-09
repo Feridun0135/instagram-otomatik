@@ -2,3 +2,4 @@ requests>=2.31
 edge-tts>=7.2
 numpy>=1.24
 cryptography>=42
+opencv-python-headless>=4.8,<4.11  # 4.11+ NumPy 2 ister; ses modeli NumPy 1 kullanıyor

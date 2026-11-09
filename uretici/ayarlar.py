@@ -44,7 +44,7 @@ VIDEO_YUKSEKLIK = 1920
 VIDEO_FPS = 30
 # Her arka plan çekiminin ekranda kalma süresi (saniye) ve geçiş süresi.
 CEKIM_SURESI = float(os.getenv("CEKIM_SURESI", "2.2"))
-GECIS_SURESI = 0.3
+GECIS_SURESI = float(os.getenv("GECIS_SURESI", "0.45"))  # yumuşak geçiş süresi (sn)
 KLIP_SAYISI = int(os.getenv("KLIP_SAYISI", "6"))
 # Altyazı stili: "kutu" (beyaz yuvarlak kutuda cümle, önemli kelimeler renkli) veya "eski" (kelime kelime sarı vurgu).
 ALTYAZI_STILI = os.getenv("ALTYAZI_STILI", "kutu").strip().lower() or "kutu"

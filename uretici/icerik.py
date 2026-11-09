@@ -244,6 +244,8 @@ def icerik_uret() -> dict:
                 icerik["kaynak_link"] = secilen["link"]
                 icerik["kaynak_gorselleri"] = secilen.get("gorseller", [])
                 icerik["kaynak_baslik"] = secilen.get("baslik", "")
+                # Aynı ürünü anlatan diğer sitelerin haberleri: daha fazla gerçek ürün görseli/videosu için.
+                icerik["ilgili_kaynaklar"] = haber_modulu.ilgili_haberler(secilen, haberler)
             except (TypeError, ValueError, IndexError):
                 pass
             icerik["kategori"] = kategori

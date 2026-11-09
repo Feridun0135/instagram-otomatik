@@ -19,7 +19,8 @@ SARI = "&H0000D7FF&"     # ASS renkleri BGR sırasındadır: altın sarısı
 BEYAZ = "&H00FFFFFF&"
 YESIL = "&H0032A02E&"    # artı (BGR)
 KIRMIZI = "&H002E2ED6&"  # eksi (BGR)
-GECISLER = ["fade", "slideleft", "smoothleft", "slideup", "smoothup", "circleopen"]
+# Yumuşak geçişler (sert kayma ve gösterişli şekiller yok); "fade" iki kat olasılıkla seçilir.
+GECISLER = ["fade", "fade", "smoothleft", "smoothright", "smoothup"]
 
 
 # ---------- yardımcılar ----------
@@ -428,6 +429,49 @@ def _efekt_dosyalari(klasor: Path) -> dict[str, Path]:
     return dosyalar
 
 
+# Görsel çekimlerinde kamera hareketleri: (başlangıç zoom, bitiş zoom, yatay kayma oranı).
+# Hepsi yavaş ve doğrusal; ardışık çekimlerde hareket türü değişir.
+KAMERA_HAREKETLERI = [(1.00, 1.10, 0.0), (1.08, 1.08, 0.05), (1.10, 1.02, 0.0), (1.08, 1.08, -0.05)]
+
+
+def _sabit_kare(resim: Path, tur: str, hedef: Path) -> Path:
+    """Görseli bulanık arka plan üzerine yerleştirilmiş tek bir kareye çevirir (2 kat çözünürlükte).
+
+    Kamera hareketi bu kare üzerinde zoompan ile yapılır; yüksek çözünürlük sayesinde hareket titremez.
+    """
+    if hedef.exists():
+        return hedef
+    G2, Y2 = 2 * G, 2 * Y
+    if tur == "vitrin":
+        vg, vy = 2 * VITRIN_GORSEL[0], 2 * VITRIN_GORSEL[1]
+        on = f"scale={vg}:{vy}:force_original_aspect_ratio=decrease"
+        konum = f"x=({vg}-w)/2+20:y=(H-h)/2-120"
+        karartma = "-0.30"
+    else:
+        on = f"scale={G2 - 160}:{int(Y2 * 0.62)}:force_original_aspect_ratio=decrease"
+        konum = "x=(W-w)/2:y=(H-h)/2-120"
+        karartma = "-0.18"
+    subprocess.run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(resim), "-filter_complex",
+        f"[0:v]format=rgb24,split[b][f];"
+        f"[b]scale={G2}:{Y2}:force_original_aspect_ratio=increase,crop={G2}:{Y2},boxblur=60:3,"
+        f"eq=brightness={karartma}[bb];[f]{on}[ff];[bb][ff]overlay={konum}",
+        "-frames:v", "1", str(hedef)], check=True)
+    return hedef
+
+
+def _kamera(i: int, tur: str, kare_sayisi: int) -> str:
+    """zoompan ifadesi: yavaş, doğrusal yakınlaşma/uzaklaşma veya yatay kayma."""
+    if tur == "vitrin":
+        z0, z1, kay = 1.00, 1.04, 0.0
+    else:
+        z0, z1, kay = KAMERA_HAREKETLERI[i % len(KAMERA_HAREKETLERI)]
+    ilerleme = f"(on/{max(1, kare_sayisi - 1)})"
+    z = f"{z0}+({z1 - z0:.4f})*{ilerleme}"
+    x = f"(iw-iw/zoom)/2+({kay}*iw/zoom)*({ilerleme}-0.5)"
+    return f"zoompan=z='{z}':x='{x}':y='(ih-ih/zoom)/2':d=1:s={G}x{Y}:fps={FPS}"
+
+
 def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
                   resimler: list[Path] | None = None, vitrin: dict | None = None,
                   ses_efektleri: bool = True, muzik: Path | None = None) -> Path:
@@ -460,29 +504,14 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
         if resimler and sira and sira[-1][0] != "vitrin":
             # Kapanış her zaman ürünün ana görseliyle (haberin kapak görseli) bitsin.
             sira[-1] = ("resim", 0)
+        kare_sayisi = round((L + XF) * FPS)
         for i, (tur, j) in enumerate(sira):
-            yakin = "(1+0.10*t/{d})" if i % 2 == 0 else "(1.10-0.10*t/{d})"  # yakınlaş / uzaklaş
-            z = yakin.format(d=d)
-            if tur == "vitrin":
-                vg, vy = VITRIN_GORSEL
-                girdiler += ["-loop", "1", "-framerate", str(FPS), "-t", d, "-i", str(resimler[j].resolve())]
+            if tur in ("vitrin", "resim"):
+                kare = _sabit_kare(resimler[j], tur, cikti.parent / f"kare_{tur}_{j}.png")
+                girdiler += ["-loop", "1", "-framerate", str(FPS), "-t", d, "-i", str(kare.resolve())]
                 filtreler.append(
-                    f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},format=yuv420p,split[b{i}][f{i}];"
-                    f"[b{i}]scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
-                    f"boxblur=34:3,eq=brightness=-0.30[bb{i}];"
-                    f"[f{i}]scale={vg}:{vy}:force_original_aspect_ratio=decrease,"
-                    f"scale=w='trunc(iw*(1+0.04*t/{d})/2)*2':h=-2:eval=frame[ff{i}];"
-                    f"[bb{i}][ff{i}]overlay=x=({vg}-w)/2+10:y=(H-h)/2-60,setsar=1,format=yuv420p,settb=AVTB[c{i}]"
-                )
-            elif tur == "resim":
-                girdiler += ["-loop", "1", "-framerate", str(FPS), "-t", d, "-i", str(resimler[j].resolve())]
-                filtreler.append(
-                    f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},format=yuv420p,split[b{i}][f{i}];"
-                    f"[b{i}]scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
-                    f"boxblur=30:3,eq=brightness=-0.18[bb{i}];"
-                    f"[f{i}]scale={G - 80}:{int(Y * 0.62)}:force_original_aspect_ratio=decrease,"
-                    f"scale=w='trunc(iw*{z}/2)*2':h=-2:eval=frame[ff{i}];"
-                    f"[bb{i}][ff{i}]overlay=x=(W-w)/2:y=(H-h)/2-60,setsar=1,format=yuv420p,settb=AVTB[c{i}]"
+                    f"[{i}:v]setpts=PTS-STARTPTS,{_kamera(i, tur, kare_sayisi)},"
+                    f"setsar=1,format=yuv420p,settb=AVTB[c{i}]"
                 )
             else:
                 klip, sure = klip_sure[j]
@@ -491,14 +520,24 @@ def video_olustur(ses: Path, klipler: list[Path], altyazi: Path, cikti: Path,
                 bos = max(sure - (L + XF), 0.0)
                 ofset = (tekrar * (L + XF) * 0.9) % bos if bos > 0 else 0.0
                 girdiler += ["-stream_loop", "-1", "-ss", f"{ofset:.2f}", "-t", d, "-i", str(klip.resolve())]
-                filtreler.append(
-                    f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},"
-                    f"scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
-                    f"scale=w='trunc({G}*{z}/2)*2':h=-2:eval=frame,crop={G}:{Y},"
-                    + ("colorbalance=rs=0.07:gs=0.02:bs=-0.08:rm=0.05:gm=0.01:bm=-0.06,eq=saturation=1.05,"
-                       if ayarlar.SICAK_FILTRE else "")
-                    + f"setsar=1,format=yuv420p,settb=AVTB[c{i}]"
-                )
+                if resimler:
+                    # Ürün videosu (çoğu yatay): kırpmadan, bulanık arka plan üzerinde tam görünür.
+                    filtreler.append(
+                        f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},format=yuv420p,split[b{i}][f{i}];"
+                        f"[b{i}]scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
+                        f"boxblur=30:3,eq=brightness=-0.18[bb{i}];"
+                        f"[f{i}]scale={G}:{int(Y * 0.62)}:force_original_aspect_ratio=decrease[ff{i}];"
+                        f"[bb{i}][ff{i}]overlay=x=(W-w)/2:y=(H-h)/2-60,setsar=1,format=yuv420p,settb=AVTB[c{i}]"
+                    )
+                else:
+                    # Stok klip: ekranı doldurur; kendi hareketi olduğu için ayrıca zoom yapılmaz (titremez).
+                    filtreler.append(
+                        f"[{i}:v]setpts=PTS-STARTPTS,fps={FPS},"
+                        f"scale={G}:{Y}:force_original_aspect_ratio=increase,crop={G}:{Y},"
+                        + ("colorbalance=rs=0.07:gs=0.02:bs=-0.08:rm=0.05:gm=0.01:bm=-0.06,eq=saturation=1.05,"
+                           if ayarlar.SICAK_FILTRE else "")
+                        + f"setsar=1,format=yuv420p,settb=AVTB[c{i}]"
+                    )
         onceki = "c0"
         for i in range(1, n):
             gecis = rastgele.choice(GECISLER)

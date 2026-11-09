@@ -63,16 +63,20 @@ def main() -> int:
         gruplar = seslendirme.gruplara_ayir(kelimeler)
 
         print("3/4 Stok görüntüler indiriliyor...")
-        urun_gorselleri = []
+        urun_gorselleri, urun_videolari = [], []
         if veri.get("kaynak_link"):
             from uretici import haberler
-            urun_gorselleri = haberler.urun_gorsellerini_indir(
+            urun_gorselleri, urun_videolari = haberler.urun_medyasini_indir(
                 {"link": veri["kaynak_link"], "gorseller": veri.get("kaynak_gorselleri", []),
                  "baslik": veri.get("kaynak_baslik", ""), "konu": veri.get("konu", "")},
-                klasor / "urun_gorselleri")
+                klasor / "urun_gorselleri", ilgili=veri.get("ilgili_kaynaklar", []))
             veri["urun_gorseli_var"] = bool(urun_gorselleri)
-        klipler = gorseller.videolari_indir(veri["gorsel_aramalari"], klasor / "klipler",
-                                           adet=ayarlar.KLIP_SAYISI)
+        if urun_gorselleri:
+            # Ürün analizinde yalnızca ürünün kendi görselleri ve videoları; ilgisiz stok görüntü yok.
+            klipler = urun_videolari
+        else:
+            klipler = gorseller.videolari_indir(veri["gorsel_aramalari"], klasor / "klipler",
+                                               adet=ayarlar.KLIP_SAYISI)
 
         print("4/4 Video oluşturuluyor...")
         altyazi = klasor / "altyazi.ass"

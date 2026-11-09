@@ -136,7 +136,7 @@ def _anahtar_kelimeler(*metinler: str) -> set[str]:
     """Ürünü tanımlayan kelimeler (ör. "AirPods 4 tanıtıldı" -> {"airpods"})."""
     kelimeler = set()
     for metin in metinler:
-        for k in re.findall(r"[^\W_]+", (metin or "").lower()):
+        for k in re.findall(r"[^\W_]+", _kucult(metin)):
             if len(k) >= 3 and not k.isdigit() and k not in _GENEL_KELIMELER:
                 kelimeler.add(k)
     return kelimeler
@@ -151,44 +151,193 @@ def _ilgili_mi(etiket: str, adres: str, anahtarlar: set[str]) -> bool:
     return any(k in alt or k in dosya for k in anahtarlar)
 
 
-def _gorsel_adresleri(haber: dict) -> list[str]:
-    """Ürünün görsel adresleri, güvenilirlik sırasıyla.
+_VIDEO_META = re.compile(
+    r"""<meta[^>]+(?:property|name)=["'](?:og:video(?::url|:secure_url)?|twitter:player:stream)["'][^>]*content=["']([^"']+)["']""",
+    re.I)
+_VIDEO_ETIKETI = re.compile(r"""<(?:video|source)\b[^>]*\bsrc=["']([^"']+)["']""", re.I)
+_VIDEO_UZANTI = re.compile(r"\.(mp4|webm|mov|m4v)(\?|$)", re.I)
+# Başka platformların videoları kullanılmaz (kural: YouTube vb. indirilmez).
+_VIDEO_PLATFORMLARI = ("youtube.com", "youtu.be", "youtube-nocookie.com", "googlevideo.com", "vimeo.com",
+                       "vimeocdn.com", "dailymotion.com", "facebook.com", "fbcdn.net", "twitter.com", "twimg.com",
+                       "x.com", "tiktok.com", "tiktokcdn.com", "instagram.com", "cdninstagram.com")
 
-    1) Haber sayfasının ana görseli (og:image) ve RSS'teki haber görseli: her zaman alınır.
-    2) Haber metnindeki diğer görseller: yalnızca metin bitmeden önce geçiyorsa VE dosya adı ya da açıklaması
-       ürün adını içeriyorsa alınır. "İlgili haberler", yazar, reklam gibi alanlardaki görseller alınmaz.
+
+_VARYANTLAR = {"pro", "max", "ultra", "plus", "mini", "lite", "fe", "air", "se", "edge", "fold", "flip", "neo"}
+
+
+def _kucult(metin: str) -> str:
+    """Türkçeye uygun küçük harf (İ -> i, I -> ı); str.lower() "İ" harfini bozar."""
+    return (metin or "").replace("İ", "i").replace("I", "ı").lower()
+
+
+def _urun_kelimeleri(metin: str) -> set[str]:
+    return {k for k in re.findall(r"[^\W_]+", _kucult(metin))
+            if (len(k) >= 2 or k.isdigit()) and k not in _GENEL_KELIMELER}
+
+
+def ilgili_haberler(secilen: dict, haberler: list[dict], en_fazla: int = 4) -> list[dict]:
+    """Aynı ürünü anlatan diğer haberler (başka sitelerden daha fazla ürün görseli için).
+
+    Karışmaması için: başlıktaki model numaraları (rakam içeren kelimeler, ör. "4", "s26") birebir geçmeli,
+    sürüm kelimeleri (Pro, Ultra, Max, Plus...) aynı olmalı ve en az 2 ürün kelimesi ortak olmalı.
+    Böylece "AirPods 4" haberine "AirPods Pro 3", "Galaxy S26 Ultra" haberine "Galaxy S26" karışmaz.
     """
-    adresler: list[str] = []
+    hedef = _urun_kelimeleri(secilen.get("baslik", ""))
+    modeller = {k for k in hedef if any(c.isdigit() for c in k)}
+    varyantlar = hedef & _VARYANTLAR
+    if not hedef:
+        return []
+    sonuc = []
+    for h in haberler:
+        if h.get("link") == secilen.get("link"):
+            continue
+        aday = _urun_kelimeleri(h.get("baslik", ""))
+        ortak = hedef & aday
+        if modeller:
+            uygun = modeller <= aday and (aday & _VARYANTLAR) == varyantlar and len(ortak) >= 2
+        else:
+            uygun = (aday & _VARYANTLAR) == varyantlar and len(ortak) >= max(2, -(-len(hedef) * 3 // 4))
+        if uygun:
+            sonuc.append({"link": h["link"], "gorseller": h.get("gorseller", []), "baslik": h.get("baslik", "")})
+        if len(sonuc) >= en_fazla:
+            break
+    return sonuc
+
+
+def _platform_videosu_mu(adres: str) -> bool:
+    from urllib.parse import urlparse
+    host = (urlparse(adres).hostname or "").lower()
+    return any(host == a or host.endswith("." + a) for a in _VIDEO_PLATFORMLARI)
+
+
+def _adres_duzelt(a: str) -> str:
+    a = html.unescape(a.strip())
+    return "https:" + a if a.startswith("//") else a
+
+
+def _sayfa_medyasi(haber: dict) -> tuple[list[str], list[str]]:
+    """Haberin ürün görseli ve ürün videosu adresleri, güvenilirlik sırasıyla.
+
+    Görseller: 1) sayfanın ana görseli (og:image) ve RSS'teki haber görseli her zaman alınır;
+    2) haber metnindeki diğer görseller yalnızca metin bitmeden önce geçiyorsa VE dosya adı ya da açıklaması
+    ürün adını içeriyorsa alınır. "İlgili haberler", yazar, reklam alanlarındaki görseller alınmaz.
+    Videolar: sayfanın kendi video dosyaları (og:video, metin içindeki <video>); YouTube vb. platformlar alınmaz.
+    """
+    gorseller: list[str] = []
+    videolar: list[str] = []
     anahtarlar = _anahtar_kelimeler(haber.get("baslik", ""), haber.get("konu", ""))
     sayfa = ""
     try:
         sayfa = requests.get(haber["link"], headers=_BASLIK, timeout=30).text
-        adresler += _META_RE.findall(sayfa) + _META_RE2.findall(sayfa)
+        gorseller += _META_RE.findall(sayfa) + _META_RE2.findall(sayfa)
+        videolar += _VIDEO_META.findall(sayfa)
     except requests.RequestException as hata:
         print(f"    Uyarı: haber sayfası okunamadı ({type(hata).__name__})")
-    adresler += haber.get("gorseller", [])[:1]
+    gorseller += haber.get("gorseller", [])[:1]
     if sayfa:
         govde = sayfa.split("<article", 1)[1] if "<article" in sayfa else sayfa
         govde = _GOVDE_SONU.split(govde, 1)[0]
         for etiket in _IMG_ETIKETI.findall(govde):
             bulunan = _IMG_RE.findall(etiket)
             if bulunan and _ilgili_mi(etiket, bulunan[0], anahtarlar):
-                adresler.append(bulunan[0])
+                gorseller.append(bulunan[0])
+        videolar += _VIDEO_ETIKETI.findall(govde)
 
-    sonuc, gorulen = [], set()
-    for a in adresler:
-        a = html.unescape(a.strip())
-        if a.startswith("//"):
-            a = "https:" + a
-        if not a.startswith("http") or a in gorulen or _ISTENMEYEN.search(a):
+    def ayikla(adresler, uygun):
+        sonuc, gorulen = [], set()
+        for a in map(_adres_duzelt, adresler):
+            if a.startswith("http") and a not in gorulen and uygun(a):
+                gorulen.add(a)
+                sonuc.append(a)
+        return sonuc
+
+    return (ayikla(gorseller, lambda a: not _ISTENMEYEN.search(a)),
+            ayikla(videolar, lambda a: _VIDEO_UZANTI.search(a) and not _platform_videosu_mu(a)
+                   and not _ISTENMEYEN.search(a)))
+
+
+def _gorsel_adresleri(haber: dict) -> list[str]:
+    return _sayfa_medyasi(haber)[0]
+
+
+def urun_medyasini_indir(haber: dict, klasor, ilgili: list[dict] | None = None, en_fazla_gorsel: int = 8,
+                         en_fazla_video: int = 3) -> tuple[list, list]:
+    """Seçilen haberden ve aynı ürünü anlatan diğer haberlerden ürün görsellerini ve videolarını indirir.
+
+    Videolarda insan yüzü görünüyorsa video kullanılmaz (uretici/yuz.py).
+    """
+    from pathlib import Path
+
+    klasor = Path(klasor)
+    gorsel_adresleri, video_adresleri = [], []
+    for h in [haber] + list(ilgili or []):
+        g, v = _sayfa_medyasi(h)
+        gorsel_adresleri += [a for a in g if a not in gorsel_adresleri]
+        video_adresleri += [a for a in v if a not in video_adresleri]
+    gorseller = _gorselleri_indir(gorsel_adresleri, klasor, en_fazla_gorsel)
+    videolar = _videolari_indir(video_adresleri, klasor / "videolar", en_fazla_video)
+    print(f"    Ürün görseli: {len(gorseller)} adet, ürün videosu: {len(videolar)} adet")
+    return gorseller, videolar
+
+
+def _videolari_indir(adresler: list[str], klasor, en_fazla: int, en_buyuk_mb: int = 60) -> list:
+    import subprocess
+    from pathlib import Path
+
+    from . import yuz
+
+    klasor = Path(klasor)
+    if not adresler:
+        return []
+    if not yuz.hazir_mi():
+        print("    Uyarı: yüz denetimi yapılamıyor (OpenCV yok); ürün videoları kullanılmayacak.")
+        return []
+    klasor.mkdir(parents=True, exist_ok=True)
+    sonuc = []
+    for adres in adresler[:10]:
+        if len(sonuc) >= en_fazla:
+            break
+        hedef = klasor / f"urun_video_{len(sonuc) + 1}.mp4"
+        try:
+            with requests.get(adres, headers=_BASLIK, timeout=60, stream=True) as r:
+                r.raise_for_status()
+                if not r.headers.get("Content-Type", "video").split(";")[0].startswith(("video", "application/octet")):
+                    continue
+                boyut = 0
+                with open(hedef, "wb") as f:
+                    for parca in r.iter_content(1 << 16):
+                        boyut += len(parca)
+                        if boyut > en_buyuk_mb << 20:
+                            raise ValueError("çok büyük")
+                        f.write(parca)
+        except (requests.RequestException, ValueError):
+            hedef.unlink(missing_ok=True)
             continue
-        gorulen.add(a)
-        sonuc.append(a)
+        try:
+            sure = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+                                         "default=nw=1:nk=1", str(hedef)], capture_output=True, text=True,
+                                        check=True).stdout.strip())
+        except (subprocess.CalledProcessError, ValueError):
+            sure = 0.0
+        if sure < 3:
+            hedef.unlink(missing_ok=True)
+            continue
+        if yuz.videoda_yuz_var(hedef, sure):
+            print(f"    Ürün videosu atlandı: insan yüzü görünüyor ({adres.rsplit('/', 1)[-1][:60]})")
+            hedef.unlink(missing_ok=True)
+            continue
+        sonuc.append(hedef)
     return sonuc
 
 
-def urun_gorsellerini_indir(haber: dict, klasor, en_fazla: int = 4, en_kucuk: int = 600) -> list:
-    """Haberdeki ürün görsellerini indirir; küçük/bozuk ve aynı görselleri eler."""
+def urun_gorsellerini_indir(haber: dict, klasor, en_fazla: int = 8, en_kucuk: int = 600) -> list:
+    """(Geriye dönük uyumluluk) Yalnızca seçilen haberin ürün görsellerini indirir."""
+    from pathlib import Path
+    return _gorselleri_indir(_gorsel_adresleri(haber), Path(klasor), en_fazla, en_kucuk)
+
+
+def _gorselleri_indir(adresler: list[str], klasor, en_fazla: int = 8, en_kucuk: int = 600) -> list:
+    """Görselleri indirir; küçük/bozuk ve aynı görselleri eler, JPEG'e çevirir."""
     import hashlib
     import json as _json
     import subprocess
@@ -197,7 +346,7 @@ def urun_gorsellerini_indir(haber: dict, klasor, en_fazla: int = 4, en_kucuk: in
     klasor = Path(klasor)
     klasor.mkdir(parents=True, exist_ok=True)
     indirilen, ozetler = [], set()
-    for adres in _gorsel_adresleri(haber)[:25]:
+    for adres in adresler[:40]:
         if len(indirilen) >= en_fazla:
             break
         try:
@@ -231,5 +380,4 @@ def urun_gorsellerini_indir(haber: dict, klasor, en_fazla: int = 4, en_kucuk: in
             continue
         ozetler.add(ozet)
         indirilen.append(jpg)
-    print(f"    Ürün görseli: {len(indirilen)} adet indirildi")
     return indirilen
