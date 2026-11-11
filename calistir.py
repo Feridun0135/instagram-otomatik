@@ -55,8 +55,8 @@ def main() -> int:
 
         print("2/4 Seslendiriliyor...")
         ses = klasor / "ses.mp3"
-        konusma = seslendirme.konusma_diline_cevir(seslendirme.ingilizce_okunus(
-            seslendirme.noktalamayi_duzelt(veri.get("seslendirme_metni") or veri["metin"])))
+        konusma = seslendirme.konusma_diline_cevir(seslendirme.ingilizce_okunus(seslendirme.sayilari_oku(
+            seslendirme.noktalamayi_duzelt(veri.get("seslendirme_metni") or veri["metin"]))))
         bolumler = seslendirme.seslendir(konusma, ses)
         kelimeler = seslendirme.yaziya_esle(seslendirme.kelimelere_bol(bolumler), konusma,
                                             seslendirme.noktalamayi_duzelt(veri["metin"]))

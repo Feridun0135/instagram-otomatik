@@ -66,6 +66,79 @@ def _gelecek_zamani_konus(kelime: str) -> str:
     return govde + kuyruk
 
 
+_BIRLER = ["", "bir", "iki", "üç", "dört", "beş", "altı", "yedi", "sekiz", "dokuz"]
+_ONLAR = ["", "on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan"]
+_BUYUKLER = ["", "bin", "milyon", "milyar", "trilyon"]
+
+
+def _uc_basamak(n: int) -> list[str]:
+    y, o, b = n // 100, n // 10 % 10, n % 10
+    sozler = []
+    if y:
+        sozler += ([] if y == 1 else [_BIRLER[y]]) + ["yüz"]
+    if o:
+        sozler.append(_ONLAR[o])
+    if b:
+        sozler.append(_BIRLER[b])
+    return sozler
+
+
+def sayiyi_yaziya(n: int) -> str:
+    """256 -> "iki yüz elli altı", 1500 -> "bin beş yüz", 2026 -> "iki bin yirmi altı"."""
+    if n == 0:
+        return "sıfır"
+    sozler, i = [], 0
+    while n and i < len(_BUYUKLER):
+        grup = n % 1000
+        if grup:
+            parca = _uc_basamak(grup)
+            if i == 1 and grup == 1:
+                parca = []                       # "bir bin" değil "bin"
+            sozler = parca + ([_BUYUKLER[i]] if i else []) + sozler
+        n //= 1000
+        i += 1
+    return " ".join(sozler)
+
+
+def _ondalik_yaziya(tam: str, kesir: str) -> str:
+    """6,1 -> "altı virgül bir"; 1,05 -> "bir virgül sıfır beş"; 2,25 -> "iki virgül yirmi beş"."""
+    sifirlar = len(kesir) - len(kesir.lstrip("0"))
+    kalan = kesir.lstrip("0")
+    return " ".join([sayiyi_yaziya(int(tam)), "virgül"] + ["sıfır"] * sifirlar
+                    + ([sayiyi_yaziya(int(kalan))] if kalan else []))
+
+
+_SAYI = re.compile(
+    r"(?P<yuzde>%\s?)?"
+    r"(?P<sayi>\d{1,3}(?:\.\d{3})+|\d+)(?:(?P<ayirac>[.,])(?P<kesir>\d+))?"
+    r"(?P<yuzde2>\s?%)?"
+    r"(?:'(?P<ek>[^\W\d_]+))?")
+
+
+def sayilari_oku(metin: str) -> str:
+    """Seslendirme metnindeki sayıları Türkçe okunuşlarıyla yazar.
+
+    256 -> iki yüz elli altı, 1.500 -> bin beş yüz, 6,1 -> altı virgül bir, %20 -> yüzde yirmi,
+    2026'da -> iki bin yirmi altıda, 18:47 -> on sekiz kırk yedi, S25 -> S yirmi beş.
+    Bir sayıdan sonra kesme işaretiyle gelen ek okunuşa bitişik yazılır.
+    """
+    def cevir(m: re.Match) -> str:
+        sayi = m["sayi"].replace(".", "")
+        if m["kesir"] is not None and not (m["ayirac"] == "." and len(m["kesir"]) == 3 and "." not in m["sayi"]):
+            soz = _ondalik_yaziya(sayi, m["kesir"])
+        elif m["kesir"] is not None:               # "1.500" -> binlik ayıracı
+            soz = sayiyi_yaziya(int(sayi + m["kesir"]))
+        else:
+            soz = sayiyi_yaziya(int(sayi))
+        if m["yuzde"] or m["yuzde2"]:
+            soz = "yüzde " + soz
+        on = " " if m.start() > 0 and (metin[m.start() - 1].isalpha()) else ""   # S25 -> S yirmi beş
+        return on + soz + (m["ek"] or "")
+
+    metin = re.sub(r"(\d{1,2}):(\d{2})\b", r"\1 \2", metin)       # saat: 18:47 -> 18 47
+    return _SAYI.sub(cevir, metin)
+
+
 # İngilizce kelime ve markaların İngilizce okunuşu, Türkçe harflerle (Türkçe ses modeli böylece İngilizce aksanla okur).
 # Türkçede zaten yazıldığı gibi okunanlar (Samsung, Android, Instagram, Tesla...) listede yoktur.
 INGILIZCE_OKUNUS = {
@@ -99,7 +172,9 @@ def ingilizce_okunus(metin: str) -> str:
 
     metin = re.sub(r"(?<![^\s(\"'])[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z]+)?", cevir, metin)
     # Cümle başındaki kelime küçük harfe döndüyse büyüt.
-    return re.sub(r"(^|[.!?]\s+)([a-zçğıöşü])", lambda m: m.group(1) + m.group(2).upper(), metin)
+    tr_buyuk = {"i": "İ", "ı": "I"}
+    return re.sub(r"(^|[.!?]\s+)([a-zçğıöşü])",
+                  lambda m: m.group(1) + tr_buyuk.get(m.group(2), m.group(2).upper()), metin)
 
 
 def konusma_diline_cevir(metin: str) -> str:

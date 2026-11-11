@@ -109,17 +109,17 @@ def not_zamanlari(notlar: list[dict], kelimeler: list[dict], toplam: float,
 VITRIN_GORSEL = (600, 1150)   # ürün görselinin sığacağı alan (genişlik, yükseklik)
 VITRIN_OK_X = 600             # okun başladığı x
 VITRIN_LISTE_X = 700          # özellik yazılarının başladığı x
-VITRIN_Y = [500, 680, 860, 1040]  # en fazla 4 madde
-VITRIN_UST = 370              # ilk başlığın y'si
-VITRIN_BASLIK_ARALIK = 112
-VITRIN_MADDE_ARALIK = 150
+VITRIN_EN_FAZLA = 6           # en fazla 6 madde (4 artı + 2 eksi)
+VITRIN_UST = 360              # ilk başlığın y'si
+VITRIN_BASLIK_ARALIK = 100
+VITRIN_MADDE_ARALIK = 132
 VITRIN_GRUP_BOSLUK = 30
 
 
 def vitrin_plani(kartlar: list[dict], toplam: float) -> dict | None:
     """Ürün özelliklerinin sırayla listeleneceği zaman aralığını çıkarır (en az 2 özellik gerekir)."""
     maddeler = [{"baslangic": k["baslangic"], "metin": k["metin"], "tur": k.get("tur")}
-                for k in kartlar][:len(VITRIN_Y)]
+                for k in kartlar][:VITRIN_EN_FAZLA]
     if len(maddeler) < 2:
         return None
     bas = max(maddeler[0]["baslangic"] - 0.3, 3.1)
@@ -266,7 +266,7 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
         # Kart etiketi: sarı zemin üzerinde siyah, küçük.
         f"Style: Etiket,{font},52,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,2,0,3,14,0,5,0,0,0,1",
         # Ürün vitrini: sağdaki özellik maddeleri ve başlık.
-        f"Style: Ozellik,{font},46,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,4,{VITRIN_LISTE_X},30,0,1",
+        f"Style: Ozellik,{font},42,&H00FFFFFF,&H00FFFFFF,&H28201812,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,4,{VITRIN_LISTE_X},30,0,1",
         f"Style: VitrinBaslik,{font},46,&H00000000,&H00000000,&H0000D7FF,&H00000000,-1,0,0,0,100,100,3,0,3,14,0,4,{VITRIN_LISTE_X},30,0,1",
         f"Style: Ok,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,4,0,0,0,1",
         f"Style: Cubuk,{font},20,&H0000D7FF,&H0000D7FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
@@ -375,9 +375,13 @@ def ass_yaz(gruplar: list[list[dict]], kanca: str, kartlar: list[dict], toplam: 
                  rf"{{\pos({VITRIN_OK_X},{y})\c{renk}\fscx0\t(0,180,\fscx100){kaybol}\p1}}"
                  "m 0 -5 l 66 -5 l 66 -17 l 92 0 l 66 17 l 66 5 l 0 5{\\p0}")
             # Özellik yazısı: sağdan kayarak gelir, hafifçe büyüyüp yerine oturur.
+            # Uzun madde en fazla 2 satıra sığsın diye yazı boyutu küçültülür (alttaki maddeye taşmasın).
+            yazi = on_ek + tr_buyuk(_temiz(satir["metin"]))
+            genislik = _yazi_genisligi(yazi, 42)
+            boyut = 42 if genislik <= 2 * 300 else max(30, int(42 * 2 * 300 / genislik))
             olay(2, sb + 0.12, vs, "Ozellik",
-                 rf"{{\move({G + 40},{y},{VITRIN_LISTE_X},{y},0,220)\t(220,320,\fscx106\fscy106)"
-                 rf"\t(320,420,\fscx100\fscy100){kutu}{kaybol}}}" + on_ek + tr_buyuk(_temiz(satir["metin"])))
+                 rf"{{\fs{boyut}\move({G + 40},{y},{VITRIN_LISTE_X},{y},0,220)\t(220,320,\fscx106\fscy106)"
+                 rf"\t(320,420,\fscx100\fscy100){kutu}{kaybol}}}" + yazi)
 
     # İlerleme çubuğu: video boyunca soldan sağa dolar.
     olay(4, 0, toplam, "Cubuk",

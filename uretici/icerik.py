@@ -149,9 +149,11 @@ Haberler:
 Daha önce işlenen konular (TEKRARLAMA):
 {eskiler}
 
-Analiz OBJEKTİF olsun ve şu sırayla ilerlesin: ürün ne (tek cümle), 2 artısı, 2 eksisi, kime değer / kime değmez.
+Analiz OBJEKTİF olsun ve şu sırayla ilerlesin: ürün ne (tek cümle), 4 artısı, 2 eksisi, kime değer / kime değmez.
+Bu videoda seslendirme metni 85-110 kelime olabilir (4 artı ve 2 eksi sığsın diye); cümleler yine kısa ve tempolu olsun.
 Ürünün adını ve model numarasını seçtiğin haberin başlığında ve özetinde geçtiği gibi BİREBİR kullan; model numarası uydurma
 veya değiştirme (haber "AirPods 4" diyorsa "AirPods 5" yazma).
+Artıların her biri farklı bir özellik olsun (aynı şeyi iki kez söyleme) ve yalnızca haberde geçen bilgilere dayansın.
 Artılar ve eksiler dengeli olsun; eksileri yumuşatma, artıları abartma. Her artı ve eksiyi ayrı kısa bir cümleyle söyle.
 Eksilere geçerken bunu sesli olarak da belirt (ör. "Gelelim eksilere", "Şimdi işin öbür tarafı"); ekranda o an EKSİLER başlığı çıkacak.
 
@@ -160,7 +162,7 @@ Eksiler için doğruluk kuralı: eksi uydurma. Eksi olarak yalnızca şunları k
 - haberden çıkan dürüst bir belirsizlik (ör. "fiyatı henüz açıklanmadı", "Türkiye'ye gelip gelmeyeceği belli değil",
   "pil ömrü henüz bağımsız testlerle doğrulanmadı", "ilk nesil ürün, yazılım olgunlaşmamış olabilir").
 
-Bu videoda ekran_notlari ARTI ve EKSİLERDİR: tam 4 madde, önce 2 artı sonra 2 eksi, metinde söylendikleri sırayla.
+Bu videoda ekran_notlari ARTI ve EKSİLERDİR: tam 6 madde, önce 4 artı sonra 2 eksi, metinde söylendikleri sırayla.
 Her madde en fazla 4 kelime olsun (ör. "1,3 inç dokunmatik ekran", "Fiyatı henüz belli değil") ve ek olarak
 "tur" alanı taşısın: artılar için "arti", eksiler için "eksi". Örnek:
 {{"metin": "1,3 inç dokunmatik ekran", "cumle_baslangici": "metindeki cümlenin ilk 3 kelimesi", "tur": "arti"}}
