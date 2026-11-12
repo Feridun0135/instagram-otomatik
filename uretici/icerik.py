@@ -16,6 +16,9 @@ KATEGORILER = {
 DONGU = ["yeni_urun", "ipucu", "yeni_urun", "teknoloji_bilgisi"]
 
 GECMIS_DOSYASI = ayarlar.VERI / "gecmis.json"
+# Trend rehberi: "teknoloji-trend-analizi" becerisiyle hazırlanır, kullanıcı onayıyla depoya eklenir.
+TREND_REHBERI = ayarlar.VERI / "trend_rehberi.md"
+TREND_GECERLILIK_GUN = 45   # daha eski rehber kullanılmaz (trendler eskir)
 
 
 def gecmisi_oku() -> list[dict]:
@@ -212,7 +215,28 @@ def _gemini_cagir(govde: dict) -> str:
     raise RuntimeError(f"Gemini API şu an yanıt vermiyor. Biraz sonra tekrar deneyin. Son hata: {son_hata}")
 
 
+def _trend_rehberi() -> str:
+    """Güncel trend rehberini istemin sonuna eklenecek biçimde döndürür (yoksa veya eskiyse boş).
+
+    Rehberin ilk satırlarında "Tarih: YYYY-AA-GG" bulunur; 45 günden eskiyse kullanılmaz.
+    """
+    import re
+
+    if not TREND_REHBERI.exists():
+        return ""
+    metin = TREND_REHBERI.read_text(encoding="utf-8").strip()
+    tarih = re.search(r"Tarih:\s*(\d{4}-\d{2}-\d{2})", metin[:300])
+    if not tarih or (date.today() - date.fromisoformat(tarih.group(1))).days > TREND_GECERLILIK_GUN:
+        print("    Uyarı: trend rehberi yok veya eskimiş; kullanılmadı.")
+        return ""
+    return ("\n\nGÜNCEL TREND REHBERİ (izleyicinin şu an en çok ilgilendiği konular ve tutan kanca/format kalıpları).\n"
+            "Konu seçiminde ve kanca/akış kurarken buna yönel; ama yukarıdaki doğruluk, üslup, konuşma dili ve "
+            "noktalama kurallarını DEĞİŞTİRMEZ. Başka içeriklerin cümlelerini kopyalama, kalıbı kendi konuna uyarla.\n"
+            + metin[:6000])
+
+
 def _gemini_json(istem: str) -> dict:
+    istem = istem + _trend_rehberi()
     govde = {
         "contents": [{"parts": [{"text": istem}]}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 1.0},
