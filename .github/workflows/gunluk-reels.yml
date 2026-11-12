@@ -3,13 +3,26 @@ name: Günlük Reels
 
 on:
   # Saatler UTC'dir; Türkiye saati = UTC + 3. GitHub zamanlanmış çalışmaları birkaç dakika geciktirebilir.
-  # Gün gün saatler, 9,6 milyon gönderilik Buffer analizindeki en yüksek etkileşim saatlerine göre seçildi.
+  # Saatler, 9,6 milyon gönderilik Buffer analizindeki en yüksek etkileşim saatlerine göre seçildi.
+  # Her gün iki paylaşım: sabah bilgilendirme listesi (fotoğraf + maddeler), akşam video.
+  # ÖNEMLİ: sabah saatlerini değiştirirsen aşağıdaki "Paylaşım türünü belirle" adımındaki listeyi de güncelle.
   schedule:
-    - cron: "47 15 * * 1,2"    # Pazartesi, Salı      18:47 (TR)
-    - cron: "47 8 * * 3"       # Çarşamba             11:47 (TR)
-    - cron: "47 5 * * 4"       # Perşembe             08:47 (TR)
-    - cron: "47 17 * * 5,6,0"  # Cuma, Cumartesi, Pazar 20:47 (TR)
+    # Sabah bilgilendirme
+    - cron: "47 5 * * 1,2,4"   # Pazartesi, Salı, Perşembe 08:47 (TR)
+    - cron: "47 4 * * 3"       # Çarşamba                  07:47 (TR)
+    - cron: "47 2 * * 5"       # Cuma                      05:47 (TR)
+    - cron: "47 6 * * 6,0"     # Cumartesi, Pazar          09:47 (TR)
+    # Akşam video
+    - cron: "47 15 * * 1,2,4"  # Pazartesi, Salı, Perşembe 18:47 (TR)
+    - cron: "47 14 * * 3"      # Çarşamba                  17:47 (TR)
+    - cron: "47 17 * * 5,6,0"  # Cuma, Cumartesi, Pazar    20:47 (TR)
   workflow_dispatch:         # Actions sekmesinden elle de çalıştırılabilir
+    inputs:
+      tur:
+        description: "Paylaşım türü"
+        type: choice
+        options: [video, sabah]
+        default: video
 
 permissions:
   contents: write   # konu geçmişini depoya kaydetmek için
@@ -53,6 +66,16 @@ jobs:
         if: vars.SES_MOTORU == 'klon'
         run: pip install chatterbox-tts --extra-index-url https://download.pytorch.org/whl/cpu
 
+      - name: Paylaşım türünü belirle
+        run: |
+          case "${{ github.event.schedule }}" in
+            "47 5 * * 1,2,4"|"47 4 * * 3"|"47 2 * * 5"|"47 6 * * 6,0") TUR=sabah ;;
+            "") TUR="${{ inputs.tur || 'video' }}" ;;
+            *) TUR=video ;;
+          esac
+          echo "TUR=$TUR" >> "$GITHUB_ENV"
+          echo "Paylaşım türü: $TUR"
+
       - name: Videoyu üret
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -60,7 +83,8 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           SES_MOTORU: ${{ vars.SES_MOTORU }}
           SES_SIFRESI: ${{ secrets.SES_SIFRESI }}
-        run: python calistir.py
+        run: |
+          if [ "$TUR" = "sabah" ]; then python calistir.py --sabah; else python calistir.py; fi
 
       - name: Yayın klasörünü hazırla
         run: |
@@ -90,9 +114,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add veri/gecmis.json
-          git commit -m "Konu geçmişi: $(date -u +%Y-%m-%d)" || echo "Değişiklik yok"
-          git push
+          git add veri/gecmis.json veri/sabah_gecmis.json 2>/dev/null || git add veri/gecmis.json
+          git commit -m "Konu geçmişi ($TUR): $(date -u +%Y-%m-%d)" || echo "Değişiklik yok"
+          git pull --rebase && git push
 
       - name: Videoyu indirilebilir sakla (7 gün)
         if: always()
