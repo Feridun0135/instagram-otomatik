@@ -3,6 +3,7 @@
 Kullanım:
     python calistir.py              Günün videosunu üretir (paylaşım henüz eklenmedi)
     python calistir.py --deneme     Yapay zekâ ve Pexels anahtarı olmadan örnek metinle video üretir
+    python calistir.py --sabah      Sabah bilgilendirme Reels'ini üretir (fotoğraf + tek tek gelen 6-7 madde)
 """
 import argparse
 import json
@@ -39,6 +40,7 @@ ORNEK_ICERIK = {
 def main() -> int:
     ap = argparse.ArgumentParser(description="Instagram günlük video üretici")
     ap.add_argument("--deneme", action="store_true", help="Örnek metinle, yapay zekâ kullanmadan video üret")
+    ap.add_argument("--sabah", action="store_true", help="Sabah bilgilendirme Reels'ini üret")
     args = ap.parse_args()
 
     if not shutil.which("ffmpeg"):
@@ -47,6 +49,9 @@ def main() -> int:
 
     klasor = ayarlar.CIKTI / datetime.now().strftime("%Y-%m-%d_%H%M%S")
     klasor.mkdir(parents=True, exist_ok=True)
+
+    if args.sabah:
+        return sabah(klasor)
 
     try:
         print("1/4 İçerik hazırlanıyor...")
@@ -98,6 +103,27 @@ def main() -> int:
             icerik.gecmise_ekle(veri)
 
         print(f"Tamam: {cikti}")
+    except Exception:
+        hata = traceback.format_exc()
+        (klasor / "hata.txt").write_text(hata, encoding="utf-8")
+        print(hata)
+        print(f"HATA: Ayrıntılar şu dosyaya yazıldı: {klasor / 'hata.txt'}")
+        return 1
+    return 0
+
+
+def sabah(klasor) -> int:
+    """Sabah bilgilendirme Reels'i: video.mp4 ve aciklama.txt aynı klasöre yazılır (paylaşım adımı aynıdır)."""
+    from uretici import bilgi
+
+    try:
+        veri = bilgi.uret(klasor)
+        (klasor / "aciklama.txt").write_text(bilgi.instagram_aciklamasi(veri), encoding="utf-8")
+        veri_kayit = {k: v for k, v in veri.items()}
+        (klasor / "icerik.json").write_text(json.dumps(veri_kayit, ensure_ascii=False, indent=2, default=str),
+                                            encoding="utf-8")
+        bilgi.sabah_gecmise_ekle(veri)
+        print(f"Tamam: {klasor / 'video.mp4'}")
     except Exception:
         hata = traceback.format_exc()
         (klasor / "hata.txt").write_text(hata, encoding="utf-8")
