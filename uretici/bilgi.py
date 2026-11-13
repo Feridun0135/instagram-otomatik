@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 
 from . import ayarlar, icerik, seslendirme, video
+from .animasyon import SAHNE_TURLERI
 from .video import FPS, G, Y, SARI, BEYAZ, KOYU, tr_buyuk, _temiz, _yazi_genisligi, _yuvarlak_kutu, _zaman
 
 SABAH_GECMIS = ayarlar.VERI / "sabah_gecmis.json"
@@ -23,8 +24,10 @@ _SABAH_JSON = """{
   "giris": "ilk cümle: izleyiciyi durduran kanca, düzgün yazımla",
   "giris_konusma": "aynı cümle, konuşma dilinde",
   "maddeler": [
-    {"ekran": "ekranda görünecek en fazla 5 kelimelik madde", "cumle": "maddeyi anlatan TEK cümle, en fazla 14 kelime, düzgün yazımla", "cumle_konusma": "aynı cümle, konuşma dilinde"}
+    {"ekran": "ekranda görünecek en fazla 5 kelimelik madde", "cumle": "maddeyi anlatan TEK cümle, en fazla 14 kelime, düzgün yazımla", "cumle_konusma": "aynı cümle, konuşma dilinde", "sahne": {"tur": "bu maddeyi canlandıran sahne"}}
   ],
+  "giris_sahne": {"tur": "giriş cümlesini canlandıran sahne"},
+  "kapanis_sahne": {"tur": "kapanış cümlesini canlandıran sahne"},
   "kapanis": "tek cümlelik kapanış; en sonda imza cümlesi ayrıca eklenecek, sen yazma",
   "kapanis_konusma": "aynı cümle, konuşma dilinde",
   "aciklama": "kurallara uygun Instagram açıklaması (satır sonları \\n ile)",
@@ -61,6 +64,11 @@ Liste kuralları:
 Bu içeriğe özel istisnalar: uzunluk kuralı yukarıdaki liste kurallarıdır; imza cümlesini sen yazma (sistem
 "{IMZA}" cümlesini kendisi ekler); "metin", "seslendirme_metni", "vurgular", "gorsel_aramalari" ve "ekran_notlari"
 alanları bu içerikte YOK.
+
+ANİMASYON: Görüntü animasyonla anlatılır. Giriş, her madde ve kapanış için o cümlenin anlattığını canlandıran bir sahne seç
+("giris_sahne", maddelerdeki "sahne", "kapanis_sahne"). Sahne küçük bir alanda gösterilecek: telefon_ayar, kisayol, pil, rakam,
+ikon, adimlar, uyari, hiz, karsilastirma gibi sade sahneleri tercih et; "urun" sahnesini kullanma.
+{SAHNE_TURLERI}
 
 Yalnızca şu JSON'u döndür:
 {_SABAH_JSON}"""
@@ -220,11 +228,15 @@ def _arka_plan_karesi(foto: Path, hedef: Path) -> Path:
 
 
 def video_olustur(ses: Path, altyazi: Path, cikti: Path, gelisler: list[float], foto: Path | None = None,
-                  muzik: Path | None = None) -> Path:
+                  muzik: Path | None = None, taban: Path | None = None) -> Path:
     toplam = video.sure_olc(ses) + 0.5
     kare = round(toplam * FPS)
     girdiler: list[str] = []
-    if foto:
+    if taban:
+        # Animasyonlu zemin (sahneler animasyon motorunda çizildi).
+        girdiler += ["-i", str(Path(taban).resolve())]
+        arka_filtre = f"[0:v]fps={FPS},format=yuv420p"
+    elif foto:
         arka = _arka_plan_karesi(foto, altyazi.parent / "bilgi_arka.png")
         girdiler += ["-loop", "1", "-framerate", str(FPS), "-t", f"{toplam:.3f}", "-i", str(arka.resolve())]
         arka_filtre = (f"[0:v]zoompan=z='1+0.05*on/{kare}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':"
@@ -266,6 +278,24 @@ def video_olustur(ses: Path, altyazi: Path, cikti: Path, gelisler: list[float], 
     return cikti
 
 
+SAHNE_ALANI = {"x": 60, "y": 375, "w": 960, "h": 625}   # maddelerin üstündeki animasyon alanı
+
+
+def _animasyon_tabani(veri: dict, zamanlar: list[float], toplam: float, klasor: Path, foto: Path | None) -> Path:
+    """Giriş, her madde ve kapanış için sahne; doğrulanmış gerçek fotoğraf varsa girişte o gösterilir."""
+    from . import animasyon
+
+    giris = {"tur": "urun", "gorsel": 0} if foto else (veri.get("giris_sahne") or {})
+    plan = [giris] + [m.get("sahne") or {} for m in veri["maddeler"]] + [veri.get("kapanis_sahne") or {}]
+    plan = [p if p.get("tur") != "urun" or (foto and i == 0) else {} for i, p in enumerate(plan)]
+    basliklar = [""] + [m["ekran"] for m in veri["maddeler"]] + [""]
+    # Kapanış ve imza aynı sahnede kalır.
+    sahneler = animasyon.sahneleri_hazirla(plan, zamanlar[:len(plan)], toplam, basliklar)
+    (klasor / "sahneler.json").write_text(animasyon.plan_json(sahneler), encoding="utf-8")
+    return animasyon.video_uret(sahneler, toplam, klasor / "animasyon.mp4", alan=SAHNE_ALANI,
+                                gorseller=[foto] if foto else [])
+
+
 def uret(klasor: Path) -> dict:
     """Sabah bilgilendirme videosunu üretir; içerik verisini döndürür (video: klasor/video.mp4)."""
     from . import foto as foto_modulu
@@ -295,11 +325,17 @@ def uret(klasor: Path) -> dict:
 
     print("4/4 Video oluşturuluyor...")
     altyazi = klasor / "altyazi.ass"
-    gelisler = ass_yaz(veri, zamanlar, toplam, altyazi, foto_var=bool(foto))
+    taban = None
+    if ayarlar.ANIMASYON:
+        try:
+            taban = _animasyon_tabani(veri, zamanlar, toplam, klasor, foto)
+        except Exception as hata:  # animasyon olmazsa fotoğraflı/sade tasarımla devam
+            print(f"    Uyarı: animasyon üretilemedi ({type(hata).__name__}: {hata}); sade tasarım kullanılacak.")
+    gelisler = ass_yaz(veri, zamanlar, toplam, altyazi, foto_var=bool(foto) or bool(taban))
     muzik_dosyasi = None
     if ayarlar.MUZIK:
         from . import muzik
         muzik_dosyasi = muzik.muzik_hazirla("ipucu", toplam, klasor / "muzik.wav",
                                             tohum=random.randrange(1 << 30))
-    video_olustur(ses, altyazi, klasor / "video.mp4", gelisler, foto=foto, muzik=muzik_dosyasi)
+    video_olustur(ses, altyazi, klasor / "video.mp4", gelisler, foto=foto, muzik=muzik_dosyasi, taban=taban)
     return veri

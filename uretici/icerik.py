@@ -6,6 +6,7 @@ from datetime import date
 import requests
 
 from . import ayarlar
+from .animasyon import SAHNE_TURLERI
 
 KATEGORILER = {
     "yeni_urun": "yeni çıkan veya yeni duyurulan bir teknoloji ürününün analizi",
@@ -104,10 +105,20 @@ _JSON_SEMASI = """{{
   "gorsel_aramalari": ["stok video aramak için 4 kısa, birbirinden farklı İngilizce arama ifadesi"],
   "ekran_notlari": [
     {{"metin": "ekranda animasyonla çıkacak en fazla 5 kelimelik kilit bilgi", "cumle_baslangici": "bu bilginin geçtiği cümlenin metindeki ilk 3 kelimesi, birebir aynı"}}
+  ],
+  "sahneler": [
+    {{"tur": "sahne türü", "...": "türe göre alanlar"}}
   ]{ek}
 }}
 
-ekran_notlari 3-4 madde olsun; metindeki önemli bilgileri, özellikleri, adımları veya rakamları özetlesin."""
+ekran_notlari 3-4 madde olsun; metindeki önemli bilgileri, özellikleri, adımları veya rakamları özetlesin.
+
+ANİMASYON: Video stok görüntü yerine animasyonla anlatılır. "sahneler" listesinde metindeki HER cümle için tam bir sahne
+olsun (cümle sayısı kadar sahne, aynı sırada). Her sahne o cümlenin anlattığı sistemi, ayarı, özelliği veya bilgiyi canlandırsın:
+ayar anlatılıyorsa telefon_ayar, kısayol anlatılıyorsa kisayol, menü yolu anlatılıyorsa adimlar, sayı/değer söyleniyorsa rakam
+veya karsilastirma, pil/şarj anlatılıyorsa pil, uyarı/istisna söyleniyorsa uyari. İmza cümlesi için hesabı hatırlatan bir ikon
+sahnesi (ör. ikon "zil", baslik "Takipte kal") kullan.
+""" + SAHNE_TURLERI.replace("{", "{{").replace("}", "}}")  # .format() ile kullanıldığı için
 
 
 def _istem(kategori: str, eski_konular: list[str]) -> str:
@@ -154,6 +165,9 @@ Daha önce işlenen konular (TEKRARLAMA):
 
 Analiz OBJEKTİF olsun ve şu sırayla ilerlesin: ürün ne (tek cümle), 4 artısı, 2 eksisi, kime değer / kime değmez.
 Bu videoda seslendirme metni 85-110 kelime olabilir (4 artı ve 2 eksi sığsın diye); cümleler yine kısa ve tempolu olsun.
+Sahneler: ilk cümlenin sahnesi "urun" olsun (ürünün gerçek fotoğrafı, baslik = ürün adı). Her artı cümlesinin sahnesinde
+"etiket":"arti", her eksi cümlesinin sahnesinde "etiket":"eksi" olsun (ikon sahnesi ya da özelliği daha iyi canlandıran rakam,
+pil, karsilastirma, hiz sahnesi; bu türlerde etiket gerekmez). "Kime değer" cümlesi için kontrol_listesi kullanabilirsin.
 Ürünün adını ve model numarasını seçtiğin haberin başlığında ve özetinde geçtiği gibi BİREBİR kullan; model numarası uydurma
 veya değiştirme (haber "AirPods 4" diyorsa "AirPods 5" yazma).
 Artıların her biri farklı bir özellik olsun (aynı şeyi iki kez söyleme) ve yalnızca haberde geçen bilgilere dayansın.

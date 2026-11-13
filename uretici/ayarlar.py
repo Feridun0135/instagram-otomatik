@@ -55,3 +55,6 @@ SICAK_FILTRE = os.getenv("SICAK_FILTRE", "1") != "0"
 # Arka plan müziği: MUZIK=0 kapatır; MUZIK_SEVIYE müziğin ses seviyesi (konuşma sırasında ayrıca kısılır).
 MUZIK = os.getenv("MUZIK", "1") != "0"
 MUZIK_SEVIYE = float(os.getenv("MUZIK_SEVIYE", "0.14"))
+
+# Animasyonlu anlatım (stok görüntü yerine kodla çizilen hareketli sahneler). Kapatmak için ANIMASYON=0.
+ANIMASYON = os.getenv("ANIMASYON", "1").strip() not in ("0", "hayir", "false", "")

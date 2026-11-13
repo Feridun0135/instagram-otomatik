@@ -271,6 +271,11 @@ def gruplara_ayir(kelimeler: list[dict], en_fazla: int = 3, duraklama: float = 0
     return gruplar
 
 
+def _cumleler_metin(metin: str) -> list[str]:
+    import re
+    return [c for c in re.split(r"(?<=[.!?…])\s+", metin.strip()) if c.split()]
+
+
 def _cumleler(metin: str) -> list[list[str]]:
     import re
     return [c.split() for c in re.split(r"(?<=[.!?…])\s+", metin.strip()) if c.split()]
